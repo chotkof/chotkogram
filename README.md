@@ -33,21 +33,3 @@ some patches from [Telegraher](https://github.com/nikitasius/Telegraher).
 ```
 ./gradlew assembleAfatRelease
 ```
-
-## ChotkoGram Localization
-
-[![Crowdin](https://badges.crowdin.net/chotkogram/localized.svg)](https://crowdin.com/project/chotkogram)
-[![Crowdin](https://badges.crowdin.net/exteralocales/localized.svg)](https://crowdin.com/project/exteralocales)
-
-We have our own **[Crowdin](https://crowdin.com/project/chotkogram)**.
-
-But since **ChotkoGram** is based on **exteraGram**, also join their project
-at **[Crowdin](https://crowdin.com/project/exteralocales)**!
-
-## Credits
-
-- **[exteraGram](https://github.com/exteraSquad/exteraGram)**
-- [Telegraher](https://github.com/nikitasius/Telegraher)
-- [Cherrygram](https://github.com/arsLan4k1390/Cherrygram)
-- [Nagram](https://github.com/NextAlone/Nagram)
-- [Telegram FOSS](https://github.com/Telegram-FOSS-Team/Telegram-FOSS)
