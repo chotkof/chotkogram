@@ -2,10 +2,10 @@ package org.telegram.tgnet;
 
 import org.telegram.messenger.BuildVars;
 import org.telegram.messenger.FileLog;
+import org.telegram.messenger.Utilities;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.charset.StandardCharsets;
 import java.util.LinkedList;
 
 public class NativeByteBuffer extends AbstractSerializedData {
@@ -16,7 +16,7 @@ public class NativeByteBuffer extends AbstractSerializedData {
     private int len;
     public boolean reused = true;
 
-    private static final ThreadLocal<LinkedList<NativeByteBuffer>> addressWrappers = new ThreadLocal<>() {
+    private static final ThreadLocal<LinkedList<NativeByteBuffer>> addressWrappers = new ThreadLocal<LinkedList<NativeByteBuffer>>() {
         @Override
         protected LinkedList<NativeByteBuffer> initialValue() {
             return new LinkedList<>();
@@ -132,6 +132,21 @@ public class NativeByteBuffer extends AbstractSerializedData {
         } catch (Exception e) {
             if (BuildVars.LOGS_ENABLED) {
                 FileLog.e("write int64 error");
+                FileLog.e(e);
+            }
+        }
+    }
+
+    public void writeFloat(float f) {
+        try {
+            if (!justCalc) {
+                buffer.putInt(Float.floatToIntBits(f));
+            } else {
+                len += 4;
+            }
+        } catch (Exception e) {
+            if (BuildVars.LOGS_ENABLED) {
+                FileLog.e("write float error");
                 FileLog.e(e);
             }
         }
@@ -381,6 +396,22 @@ public class NativeByteBuffer extends AbstractSerializedData {
         return buffer.position();
     }
 
+    public byte readByte(boolean exception) {
+        try {
+            return buffer.get();
+        } catch (Exception e) {
+            if (exception) {
+                throw new RuntimeException("read byte error", e);
+            } else {
+                if (BuildVars.LOGS_ENABLED) {
+                    FileLog.e("read byte error");
+                    FileLog.e(e);
+                }
+            }
+        }
+        return 0;
+    }
+
     public int readInt32(boolean exception) {
         try {
             return buffer.getInt();
@@ -390,6 +421,22 @@ public class NativeByteBuffer extends AbstractSerializedData {
             } else {
                 if (BuildVars.LOGS_ENABLED) {
                     FileLog.e("read int32 error");
+                    FileLog.e(e);
+                }
+            }
+        }
+        return 0;
+    }
+
+    public float readFloat(boolean exception) {
+        try {
+            return Float.intBitsToFloat(buffer.getInt());
+        } catch (Exception e) {
+            if (exception) {
+                throw new RuntimeException("read float error", e);
+            } else {
+                if (BuildVars.LOGS_ENABLED) {
+                    FileLog.e("read float error");
                     FileLog.e(e);
                 }
             }
@@ -460,6 +507,16 @@ public class NativeByteBuffer extends AbstractSerializedData {
         }
     }
 
+    public String hex() {
+        try {
+            byte[] bytes = readData(Math.min(limit(), 1024), true);
+            return Utilities.bytesToHex(bytes);
+        } catch (Exception e) {
+            FileLog.e(e);
+            return "<err>";
+        }
+    }
+
     public byte[] readData(int count, boolean exception) {
         byte[] arr = new byte[count];
         readBytes(arr, exception);
@@ -475,6 +532,11 @@ public class NativeByteBuffer extends AbstractSerializedData {
                 l = getIntFromByte(buffer.get()) | (getIntFromByte(buffer.get()) << 8) | (getIntFromByte(buffer.get()) << 16);
                 sl = 4;
             }
+
+            if (l > remaining() || l < 0) {
+                throw new RuntimeException("string size too big");
+            }
+
             byte[] b = new byte[l];
             buffer.get(b);
             int i = sl;
@@ -482,7 +544,7 @@ public class NativeByteBuffer extends AbstractSerializedData {
                 buffer.get();
                 i++;
             }
-            return new String(b, StandardCharsets.UTF_8);
+            return new String(b, "UTF-8");
         } catch (Exception e) {
             if (exception) {
                 throw new RuntimeException("read string error", e);
@@ -505,6 +567,11 @@ public class NativeByteBuffer extends AbstractSerializedData {
                 l = getIntFromByte(buffer.get()) | (getIntFromByte(buffer.get()) << 8) | (getIntFromByte(buffer.get()) << 16);
                 sl = 4;
             }
+
+            if (l > remaining() || l < 0) {
+                throw new RuntimeException("byte array size too big");
+            }
+
             byte[] b = new byte[l];
             buffer.get(b);
             int i = sl;
@@ -534,6 +601,11 @@ public class NativeByteBuffer extends AbstractSerializedData {
                 l = getIntFromByte(buffer.get()) | (getIntFromByte(buffer.get()) << 8) | (getIntFromByte(buffer.get()) << 16);
                 sl = 4;
             }
+
+            if (l > remaining() || l < 0) {
+                throw new RuntimeException("byte array size too big");
+            }
+
             NativeByteBuffer b = new NativeByteBuffer(l);
             int old = buffer.limit();
             buffer.limit(buffer.position() + l);

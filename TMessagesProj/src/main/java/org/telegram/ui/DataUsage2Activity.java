@@ -6,7 +6,6 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.res.Configuration;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PorterDuff;
@@ -35,8 +34,6 @@ import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.exteragram.messenger.ExteraConfig;
-
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.NotificationCenter;
@@ -62,6 +59,11 @@ import java.util.Arrays;
 
 public class DataUsage2Activity extends BaseFragment {
 
+    public static final int TYPE_ALL = 0;
+    public static final int TYPE_MOBILE = 1;
+    public static final int TYPE_WIFI = 2;
+    public static final int TYPE_ROAMING = 3;
+
     private Theme.ResourcesProvider resourcesProvider;
 
     public DataUsage2Activity() {
@@ -80,7 +82,7 @@ public class DataUsage2Activity extends BaseFragment {
     @Override
     public View createView(Context context) {
         actionBar.setBackButtonImage(R.drawable.ic_ab_back);
-        actionBar.setTitle(LocaleController.getString("NetworkUsage", R.string.NetworkUsage));
+        actionBar.setTitle(LocaleController.getString(R.string.NetworkUsage));
         actionBar.setBackgroundColor(getThemedColor(Theme.key_actionBarActionModeDefault));
         actionBar.setTitleColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
         actionBar.setItemsColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText), false);
@@ -124,6 +126,17 @@ public class DataUsage2Activity extends BaseFragment {
         return fragmentView = frameLayout;
     }
 
+    public void selectTab(int tab) {
+        tabsView.scrollToTab(tab, tab);
+//        pager.scrollToPosition(tab);
+    }
+
+    public void scrollToReset() {
+        final View view = pager.getCurrentView();
+        if (!(view instanceof ListView)) return;
+        ((ListView) view).scrollTo(VIEW_TYPE_RESET_BUTTON);
+    }
+
     @Override
     public Theme.ResourcesProvider getResourceProvider() {
         return resourcesProvider;
@@ -150,14 +163,24 @@ public class DataUsage2Activity extends BaseFragment {
         @Override
         public String getItemTitle(int position) {
             switch (position) {
-                case ListView.TYPE_ALL:     return LocaleController.getString("NetworkUsageAllTab", R.string.NetworkUsageAllTab);
-                case ListView.TYPE_MOBILE:  return LocaleController.getString("NetworkUsageMobileTab", R.string.NetworkUsageMobileTab);
-                case ListView.TYPE_WIFI:    return LocaleController.getString("NetworkUsageWiFiTab", R.string.NetworkUsageWiFiTab);
-                case ListView.TYPE_ROAMING: return LocaleController.getString("NetworkUsageRoamingTab", R.string.NetworkUsageRoamingTab);
+                case TYPE_ALL:     return LocaleController.getString(R.string.NetworkUsageAllTab);
+                case TYPE_MOBILE:  return LocaleController.getString(R.string.NetworkUsageMobileTab);
+                case TYPE_WIFI:    return LocaleController.getString(R.string.NetworkUsageWiFiTab);
+                case TYPE_ROAMING: return LocaleController.getString(R.string.NetworkUsageRoamingTab);
                 default: return "";
             }
         }
     }
+
+    private static final int[][] colors2 = {
+        {0xFF1CA5ED, 0xFF1488E1},
+        {0xFF55CA47, 0xFF27B434},
+        {0xFF4F85F6, 0xFF3568E8},
+        {0xFFF09F1B, 0xFFE18A11},
+        {0xFFF45255, 0xFFDF3955},
+        {0xFFC46EF4, 0xFF9F55DF},
+        {0xFF32C0CE, 0xFF1D9CC6}
+    };
 
     private static int[] colors = {
         Theme.key_statisticChartLine_blue,
@@ -202,11 +225,6 @@ public class DataUsage2Activity extends BaseFragment {
 
     class ListView extends RecyclerListView {
 
-        public static final int TYPE_ALL = 0;
-        public static final int TYPE_MOBILE = 1;
-        public static final int TYPE_WIFI = 2;
-        public static final int TYPE_ROAMING = 3;
-
         private boolean animateChart = false;
 
         int currentType = TYPE_ALL;
@@ -218,6 +236,7 @@ public class DataUsage2Activity extends BaseFragment {
             super(context);
             setLayoutManager(layoutManager = new LinearLayoutManager(context));
             setAdapter(adapter = new Adapter());
+            setSections();
             setOnItemClickListener((view, position) -> {
                 if (view instanceof Cell && position >= 0 && position < itemInners.size()) {
                     ItemInner item = itemInners.get(position);
@@ -231,9 +250,9 @@ public class DataUsage2Activity extends BaseFragment {
                     }
                 } else if (view instanceof TextCell) {
                     AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
-                    builder.setTitle(LocaleController.getString("ResetStatisticsAlertTitle", R.string.ResetStatisticsAlertTitle));
-                    builder.setMessage(LocaleController.getString("ResetStatisticsAlert", R.string.ResetStatisticsAlert));
-                    builder.setPositiveButton(LocaleController.getString("Reset", R.string.Reset), (dialogInterface, j) -> {
+                    builder.setTitle(LocaleController.getString(R.string.ResetStatisticsAlertTitle));
+                    builder.setMessage(LocaleController.getString(R.string.ResetStatisticsAlert));
+                    builder.setPositiveButton(LocaleController.getString(R.string.Reset), (dialogInterface, j) -> {
                         removedSegments.clear();
                         for (int i = 0; i < segments.length; ++i) {
                             long size = segments[i].size;
@@ -250,7 +269,7 @@ public class DataUsage2Activity extends BaseFragment {
                         setup();
                         updateRows(true);
                     });
-                    builder.setNegativeButton(LocaleController.getString("Cancel", R.string.Cancel), null);
+                    builder.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
                     AlertDialog dialog = builder.create();
                     showDialog(dialog);
                     TextView button = (TextView) dialog.getButton(DialogInterface.BUTTON_POSITIVE);
@@ -349,8 +368,8 @@ public class DataUsage2Activity extends BaseFragment {
 
             itemInners.add(new ItemInner(VIEW_TYPE_CHART));
             final String sinceText = totalSize > 0 ?
-                LocaleController.formatString("YourNetworkUsageSince", R.string.YourNetworkUsageSince, LocaleController.getInstance().formatterStats.format(getResetStatsDate())) :
-                LocaleController.formatString("NoNetworkUsageSince", R.string.NoNetworkUsageSince, LocaleController.getInstance().formatterStats.format(getResetStatsDate()));
+                LocaleController.formatString(R.string.YourNetworkUsageSince, LocaleController.getInstance().getFormatterStats().format(getResetStatsDate())) :
+                LocaleController.formatString(R.string.NoNetworkUsageSince, LocaleController.getInstance().getFormatterStats().format(getResetStatsDate()));
             itemInners.add(ItemInner.asSubtitle(sinceText));
 
             ArrayList<ItemInner> sections = new ArrayList<>();
@@ -362,13 +381,14 @@ public class DataUsage2Activity extends BaseFragment {
                     continue;
                 }
                 SpannableString percent = new SpannableString(formatPercent(tempPercents[index]));
-                percent.setSpan(new TypefaceSpan(AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_MEDIUM)), 0, percent.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                percent.setSpan(new TypefaceSpan(AndroidUtilities.bold()), 0, percent.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 percent.setSpan(new RelativeSizeSpan(.8f), 0, percent.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 percent.setSpan(new CustomCharacterSpan(.1), 0, percent.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 sections.add(ItemInner.asCell(
                     i,
                     particles[index],
-                    getThemedColor(colors[index]),
+                    colors2[index][0],
+                    colors2[index][1],
                     size == 0 ?
                         LocaleController.getString(titles[index]) :
                         TextUtils.concat(LocaleController.getString(titles[index]), "  ", percent),
@@ -428,14 +448,14 @@ public class DataUsage2Activity extends BaseFragment {
                             if (size.outSize > 0 || size.outCount > 0) {
                                 sections.add(++i, ItemInner.asCell(
                                         -1, 0, 0,
-                                        TextUtils.concat(sentIcon, " ", LocaleController.getString("BytesSent", R.string.BytesSent)),
+                                        TextUtils.concat(sentIcon, " ", LocaleController.getString(R.string.BytesSent)),
                                         AndroidUtilities.formatFileSize(size.outSize)
                                 ));
                             }
                             if (size.inSize > 0 || size.inCount > 0) {
                                 sections.add(++i, ItemInner.asCell(
                                         -1, 0, 0,
-                                        TextUtils.concat(receivedIcon, " ", LocaleController.getString("BytesReceived", R.string.BytesReceived)),
+                                        TextUtils.concat(receivedIcon, " ", LocaleController.getString(R.string.BytesReceived)),
                                         AndroidUtilities.formatFileSize(size.inSize)
                                 ));
                             }
@@ -446,24 +466,24 @@ public class DataUsage2Activity extends BaseFragment {
                 itemInners.addAll(sections);
 //                itemInners.add(new ItemInner(VIEW_TYPE_END));
                 if (!empty) {
-                    itemInners.add(ItemInner.asSeparator(LocaleController.getString("DataUsageSectionsInfo", R.string.DataUsageSectionsInfo)));
+                    itemInners.add(ItemInner.asSeparator(LocaleController.getString(R.string.DataUsageSectionsInfo) + "\n"));
                 }
             }
 
             if (!empty) {
-                itemInners.add(ItemInner.asHeader(LocaleController.getString("TotalNetworkUsage", R.string.TotalNetworkUsage)));
+                itemInners.add(ItemInner.asHeader(LocaleController.getString(R.string.TotalNetworkUsage)));
                 itemInners.add(ItemInner.asCell(
                         -1,
                         R.drawable.msg_filled_data_sent,
-                        getThemedColor(Theme.key_statisticChartLine_lightblue),
-                        LocaleController.getString("BytesSent", R.string.BytesSent),
+                        0xFF4F85F6, 0xFF3568E8,
+                        LocaleController.getString(R.string.BytesSent),
                         AndroidUtilities.formatFileSize(totalSizeOut)
                 ));
                 itemInners.add(ItemInner.asCell(
                         -1,
                         R.drawable.msg_filled_data_received,
-                        getThemedColor(Theme.key_statisticChartLine_green),
-                        LocaleController.getString("BytesReceived", R.string.BytesReceived),
+                        0xFF55CA47, 0xFF27B434,
+                        LocaleController.getString(R.string.BytesReceived),
                         AndroidUtilities.formatFileSize(totalSizeIn)
                 ));
             }
@@ -479,28 +499,28 @@ public class DataUsage2Activity extends BaseFragment {
                 itemInners.add(ItemInner.asCell(
                         -2,
                         R.drawable.msg_download_settings,
-                        getThemedColor(Theme.key_statisticChartLine_lightblue),
-                        LocaleController.getString("AutomaticDownloadSettings", R.string.AutomaticDownloadSettings),
+                        0xFF4F85F6, 0xFF3568E8,
+                        LocaleController.getString(R.string.AutomaticDownloadSettings),
                         null
                 ));
                 String info;
                 switch (currentType) {
                     case TYPE_MOBILE:
-                        info = LocaleController.getString("AutomaticDownloadSettingsInfoMobile", R.string.AutomaticDownloadSettingsInfoMobile);
+                        info = LocaleController.getString(R.string.AutomaticDownloadSettingsInfoMobile);
                         break;
                     case TYPE_ROAMING:
-                        info = LocaleController.getString("AutomaticDownloadSettingsInfoRoaming", R.string.AutomaticDownloadSettingsInfoRoaming);
+                        info = LocaleController.getString(R.string.AutomaticDownloadSettingsInfoRoaming);
                         break;
                     default:
                     case TYPE_WIFI:
-                        info = LocaleController.getString("AutomaticDownloadSettingsInfoWiFi", R.string.AutomaticDownloadSettingsInfoWiFi);
+                        info = LocaleController.getString(R.string.AutomaticDownloadSettingsInfoWiFi);
                         break;
                 }
                 itemInners.add(ItemInner.asSeparator(info));
             }
 
             if (!sections.isEmpty()) {
-                itemInners.add(new ItemInner(VIEW_TYPE_RESET_BUTTON, LocaleController.getString("ResetStatistics", R.string.ResetStatistics)));
+                itemInners.add(new ItemInner(VIEW_TYPE_RESET_BUTTON, LocaleController.getString(R.string.ResetStatistics)));
             }
             itemInners.add(ItemInner.asSeparator());
 
@@ -513,9 +533,24 @@ public class DataUsage2Activity extends BaseFragment {
             }
         }
 
+        public void scrollTo(int viewType) {
+            highlightRow(() -> {
+                int position = -1;
+                for (int i = 0; i < itemInners.size(); ++i) {
+                    if (itemInners.get(i).viewType == viewType) {
+                        position = i;
+                        break;
+                    }
+                }
+                if (position < 0) return -1;
+                layoutManager.scrollToPositionWithOffset(position, dp(60));
+                return position;
+            });
+        }
+
         private CharSequence bold(CharSequence text) {
             SpannableString string = new SpannableString(text);
-            string.setSpan(new TypefaceSpan(AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_MEDIUM)), 0, string.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            string.setSpan(new TypefaceSpan(AndroidUtilities.bold()), 0, string.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             return string;
         }
 
@@ -574,9 +609,11 @@ public class DataUsage2Activity extends BaseFragment {
                         };
                         chart.setInterceptTouch(false);
                         view = chart;
+                        view.setTag(RecyclerListView.TAG_NOT_SECTION);
                         break;
                     case VIEW_TYPE_SUBTITLE:
                         view = new SubtitleCell(getContext());
+                        view.setTag(RecyclerListView.TAG_NOT_SECTION);
                         break;
                     case VIEW_TYPE_SEPARATOR:
                         view = new TextInfoPrivacyCell(getContext());
@@ -624,30 +661,12 @@ public class DataUsage2Activity extends BaseFragment {
                 } else if (viewType == VIEW_TYPE_SUBTITLE) {
                     SubtitleCell subtitleCell = (SubtitleCell) holder.itemView;
                     subtitleCell.setText(item.text);
-                    int bottomViewType;
-                    boolean bottom = position + 1 < itemInners.size() && (bottomViewType = itemInners.get(position + 1).viewType) != item.viewType && bottomViewType != VIEW_TYPE_SEPARATOR && bottomViewType != VIEW_TYPE_ROUNDING;
-                    if (bottom) {
-                        subtitleCell.setBackground(Theme.getThemedDrawableByKey(getContext(), R.drawable.greydivider_top, Theme.key_windowBackgroundGrayShadow));
-                    } else {
-                        subtitleCell.setBackground(null);
-                    }
                 } else if (viewType == VIEW_TYPE_SECTION) {
                     Cell cell = (Cell) holder.itemView;
-                    cell.set(item.imageColor, item.imageResId, item.text, item.valueText, position + 1 < getItemCount() && itemInners.get(position + 1).viewType == viewType);
+                    cell.set(item.imageColorTop, item.imageColorBottom, item.imageResId, item.text, item.valueText, position + 1 < getItemCount() && itemInners.get(position + 1).viewType == viewType);
                     cell.setArrow(item.pad || item.index < 0 || item.index < segments.length && segments[item.index].size <= 0 ? null : collapsed[item.index]);
                 } else if (viewType == VIEW_TYPE_SEPARATOR) {
                     TextInfoPrivacyCell view = (TextInfoPrivacyCell) holder.itemView;
-                    boolean top = position > 0 && item.viewType != itemInners.get(position - 1).viewType;
-                    boolean bottom = position + 1 < itemInners.size() && itemInners.get(position + 1).viewType != item.viewType;
-                    if (top && bottom) {
-                        view.setBackground(Theme.getThemedDrawableByKey(getContext(), R.drawable.greydivider, Theme.key_windowBackgroundGrayShadow));
-                    } else if (top) {
-                        view.setBackground(Theme.getThemedDrawableByKey(getContext(), R.drawable.greydivider_bottom, Theme.key_windowBackgroundGrayShadow));
-                    } else if (bottom) {
-                        view.setBackground(Theme.getThemedDrawableByKey(getContext(), R.drawable.greydivider_top, Theme.key_windowBackgroundGrayShadow));
-                    } else {
-                        view.setBackground(null);
-                    }
                     view.setText(item.text);
                 } else if (viewType == VIEW_TYPE_HEADER) {
                     HeaderCell header = (HeaderCell) holder.itemView;
@@ -788,7 +807,8 @@ public class DataUsage2Activity extends BaseFragment {
     private static class ItemInner extends AdapterWithDiffUtils.Item {
 
         public int imageResId;
-        public int imageColor;
+        public int imageColorTop;
+        public int imageColorBottom;
         public CharSequence text;
         public CharSequence valueText;
 
@@ -824,11 +844,12 @@ public class DataUsage2Activity extends BaseFragment {
             this.valueText = valueText;
         }
 
-        private ItemInner(int viewType, int index, int imageResId, int imageColor, CharSequence text, CharSequence valueText) {
+        private ItemInner(int viewType, int index, int imageResId, int imageColorTop, int imageColorBottom, CharSequence text, CharSequence valueText) {
             super(viewType, false);
             this.index = index;
             this.imageResId = imageResId;
-            this.imageColor = imageColor;
+            this.imageColorTop = imageColorTop;
+            this.imageColorBottom = imageColorBottom;
             this.text = text;
             this.valueText = valueText;
         }
@@ -849,8 +870,12 @@ public class DataUsage2Activity extends BaseFragment {
             return new ItemInner(VIEW_TYPE_SUBTITLE, text);
         }
 
+        public static ItemInner asCell(int index, int imageResId, int imageColorTop, int imageColorBottom, CharSequence text, CharSequence valueText) {
+            return new ItemInner(VIEW_TYPE_SECTION, index, imageResId, imageColorTop, imageColorBottom, text, valueText);
+        }
+
         public static ItemInner asCell(int index, int imageResId, int imageColor, CharSequence text, CharSequence valueText) {
-            return new ItemInner(VIEW_TYPE_SECTION, index, imageResId, imageColor, text, valueText);
+            return new ItemInner(VIEW_TYPE_SECTION, index, imageResId, imageColor, imageColor, text, valueText);
         }
 
         public static ItemInner asCell(String text, CharSequence valueText) {
@@ -870,7 +895,7 @@ public class DataUsage2Activity extends BaseFragment {
                 return TextUtils.equals(text, item.text);
             }
             if (viewType == VIEW_TYPE_SECTION) {
-                return item.index == index && TextUtils.equals(text, item.text) && item.imageColor == imageColor && item.imageResId == imageResId;
+                return item.index == index && TextUtils.equals(text, item.text) && item.imageColorTop == imageColorTop && item.imageColorBottom == imageColorBottom && item.imageResId == imageResId;
             }
             return item.key == key;
         }
@@ -1014,7 +1039,8 @@ public class DataUsage2Activity extends BaseFragment {
         }
 
         public void set(
-            int imageColor,
+            int imageColorTop,
+            int imageColorBottom,
             int imageResId,
             CharSequence title,
             CharSequence value,
@@ -1024,8 +1050,12 @@ public class DataUsage2Activity extends BaseFragment {
                 imageView.setVisibility(View.GONE);
             } else {
                 imageView.setVisibility(View.VISIBLE);
-                imageView.setColorFilter(new PorterDuffColorFilter(Theme.getActiveTheme().isMonet() ? Theme.getColor(Theme.key_chats_actionIcon) : Color.WHITE, PorterDuff.Mode.SRC_IN));
-                imageView.setBackground(Theme.createRoundRectDrawable(AndroidUtilities.dp(9), Theme.getActiveTheme().isMonet() ? Theme.getColor(Theme.key_chats_actionBackground) : imageColor));
+
+                final boolean border = resourcesProvider != null ? resourcesProvider.isDark() : Theme.isCurrentThemeDark();
+                SettingsActivity.SettingCell.Background drawable = new SettingsActivity.SettingCell.Background();
+                drawable.setColor(imageColorTop, imageColorBottom);
+                drawable.setDrawBorder(border);
+                imageView.setBackground(drawable);
                 imageView.setImageResource(imageResId);
             }
 
@@ -1048,7 +1078,7 @@ public class DataUsage2Activity extends BaseFragment {
         protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
 
-            if (divider && !ExteraConfig.disableDividers) {
+            if (divider) {
                 canvas.drawLine(LocaleController.isRTL ? 0 : AndroidUtilities.dp(64), getMeasuredHeight() - 1, getMeasuredWidth() - (LocaleController.isRTL ? AndroidUtilities.dp(64) : 0), getMeasuredHeight() - 1, Theme.dividerPaint);
             }
         }
@@ -1104,7 +1134,7 @@ public class DataUsage2Activity extends BaseFragment {
 
     @Override
     public boolean isSwipeBackEnabled(MotionEvent event) {
-        if (event.getY() <= ActionBar.getCurrentActionBarHeight() + AndroidUtilities.dp(48)) {
+        if (event != null && event.getY() <= ActionBar.getCurrentActionBarHeight() + AndroidUtilities.dp(48)) {
             return true;
         }
         return pager.getCurrentPosition() == 0;

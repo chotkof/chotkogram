@@ -1,5 +1,5 @@
 /*
- * This is the source code of AyuGram for Android.
+ * This is the source code of ChotkoGram for Android.
  *
  * We do not and cannot prevent the use of our code,
  * but be respectful and credit the original author.
@@ -26,7 +26,7 @@ public interface DeletedMessageDao {
     DeletedMessageFull getMessage(long userId, long dialogId, int messageId);
 
     @Transaction
-    @Query("SELECT * FROM deletedmessage WHERE userId = :userId AND dialogId = :dialogId AND topicId = :topicId AND :startId <= messageId AND messageId <= :endId ORDER BY messageId LIMIT :limit")
+    @Query("SELECT * FROM deletedmessage WHERE userId = :userId AND dialogId = :dialogId AND (:topicId = 0 OR topicId = :topicId) AND :startId <= messageId AND messageId <= :endId ORDER BY CASE WHEN date != 0 THEN date ELSE entityCreateDate END DESC, messageId DESC LIMIT :limit")
     List<DeletedMessageFull> getMessages(long userId, long dialogId, long topicId, int startId, int endId, int limit);
 
     @Transaction

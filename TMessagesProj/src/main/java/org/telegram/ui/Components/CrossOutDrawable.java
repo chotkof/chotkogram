@@ -35,11 +35,6 @@ public class CrossOutDrawable extends Drawable {
     private float lenOffsetTop;
     private float lenOffsetBottom;
 
-    private float startXPadding;
-    private float startYPadding;
-    private float stopXPadding;
-    private float stopYPadding;
-
     public CrossOutDrawable(Context context, int iconRes, int colorKey) {
         iconDrawable = ContextCompat.getDrawable(context, iconRes);
         this.colorKey = colorKey;
@@ -93,10 +88,10 @@ public class CrossOutDrawable extends Drawable {
         canvas.saveLayerAlpha(rectF, 255, Canvas.ALL_SAVE_FLAG);
         iconDrawable.draw(canvas);
 
-        float startX = rectF.left + AndroidUtilities.dpf2(4.5f) + xOffset + lenOffsetTop + startXPadding;
-        float startY = rectF.top + AndroidUtilities.dpf2(4.5f) - AndroidUtilities.dp(1) + lenOffsetTop + startYPadding;
-        float stopX = rectF.right - AndroidUtilities.dp(3) + xOffset - lenOffsetBottom - stopXPadding;
-        float stopY = rectF.bottom - AndroidUtilities.dp(1) - AndroidUtilities.dp(3) - lenOffsetBottom - stopYPadding;
+        float startX = rectF.left + AndroidUtilities.dpf2(4.5f) + xOffset + lenOffsetTop;
+        float startY = rectF.top + AndroidUtilities.dpf2(4.5f) - AndroidUtilities.dp(1) + lenOffsetTop;
+        float stopX = rectF.right - AndroidUtilities.dp(3) + xOffset - lenOffsetBottom;
+        float stopY = rectF.bottom - AndroidUtilities.dp(1) - AndroidUtilities.dp(3) - lenOffsetBottom;
         if (cross) {
             stopX = startX + (stopX - startX) * progress;
             stopY = startY + (stopY - startY) * progress;
@@ -149,14 +144,6 @@ public class CrossOutDrawable extends Drawable {
         this.xOffset = xOffset;
         this.lenOffsetTop = lenOffsetTop;
         this.lenOffsetBottom = lenOffsetBottom;
-        invalidateSelf();
-    }
-
-    public void setPaddings(float left, float right, float top, float bottom) {
-        this.startXPadding = left;
-        this.stopXPadding = right;
-        this.startYPadding = top;
-        this.stopYPadding = bottom;
         invalidateSelf();
     }
 

@@ -80,13 +80,13 @@ public class StorageDiagramView extends View implements NotificationCenter.Notif
         avatarImageReceiver.setParentView(this);
 
         if (dialogId == CacheControlActivity.UNKNOWN_CHATS_DIALOG_ID) {
-            dialogText = LocaleController.getString("CacheOtherChats", R.string.CacheOtherChats);
+            dialogText = LocaleController.getString(R.string.CacheOtherChats);
             avatarDrawable.setAvatarType(AvatarDrawable.AVATAR_TYPE_OTHER_CHATS);
             avatarImageReceiver.setForUserOrChat(null, avatarDrawable);
         } else {
             TLObject dialog = MessagesController.getInstance(UserConfig.selectedAccount).getUserOrChat(dialogId);
             dialogText = DialogObject.setDialogPhotoTitle(avatarImageReceiver, avatarDrawable, dialog);
-            dialogText = Emoji.replaceEmoji(dialogText, null, AndroidUtilities.dp(6), false);
+            dialogText = Emoji.replaceEmoji(dialogText, null, false);
         }
     }
 
@@ -112,7 +112,7 @@ public class StorageDiagramView extends View implements NotificationCenter.Notif
 
         text1.setAnimationProperties(.18f, 0, 300, CubicBezierInterpolator.EASE_OUT_QUINT);
         text1.setTextSize(AndroidUtilities.dp(24));
-        text1.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+        text1.setTypeface(AndroidUtilities.bold());
 
         text2.setAnimationProperties(.18f, 0, 300, CubicBezierInterpolator.EASE_OUT_QUINT);
 
@@ -216,7 +216,12 @@ public class StorageDiagramView extends View implements NotificationCenter.Notif
                 if (Math.abs(len) <= 1f) {
                     float x = rectF.centerX() + (float) (r * Math.cos(Math.toRadians(-90 - 360 * startFrom)));
                     float y = rectF.centerY() + (float) (r * Math.sin(Math.toRadians(-90 - 360 * startFrom)));
-                    canvas.drawPoint(x,y,data[i].paint);
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        canvas.drawPoint(x,y,data[i].paint);
+                    } else {
+                        data[i].paint.setStyle(Paint.Style.FILL);
+                        canvas.drawCircle(x, y, data[i].paint.getStrokeWidth() / 2, data[i].paint);
+                    }
                 } else {
                     data[i].paint.setStyle(Paint.Style.STROKE);
                     canvas.drawArc(rectF, -90 - 360 * startFrom, a, false, data[i].paint);
@@ -243,7 +248,12 @@ public class StorageDiagramView extends View implements NotificationCenter.Notif
                 if (Math.abs(len) <= 1f) {
                     float x = rectF.centerX() + (float) (r * Math.cos(Math.toRadians(-90 - 360 * startFrom)));
                     float y = rectF.centerY() + (float) (r * Math.sin(Math.toRadians(-90 - 360 * startFrom)));
-                    canvas.drawPoint(x,y,data[i].paint);
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        canvas.drawPoint(x,y,data[i].paint);
+                    } else {
+                        data[i].paint.setStyle(Paint.Style.FILL);
+                        canvas.drawCircle(x, y, data[i].paint.getStrokeWidth() / 2, data[i].paint);
+                    }
                 } else {
                     data[i].paint.setStyle(Paint.Style.STROKE);
                     canvas.drawArc(rectF, -90 - 360 * startFrom, a, false, data[i].paint);

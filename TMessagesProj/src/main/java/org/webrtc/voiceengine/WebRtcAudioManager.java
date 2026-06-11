@@ -17,6 +17,8 @@ import android.media.AudioManager;
 import android.media.AudioRecord;
 import android.media.AudioTrack;
 import android.os.Build;
+
+import androidx.annotation.Keep;
 import androidx.annotation.Nullable;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -32,6 +34,7 @@ import org.webrtc.Logging;
 // dispose(). This class can also be used without calling init() if the user
 // prefers to set up the audio environment separately. However, it is
 // recommended to always use AudioManager.MODE_IN_COMMUNICATION.
+@Keep
 public class WebRtcAudioManager {
   private static final boolean DEBUG = false;
 
@@ -258,7 +261,7 @@ public class WebRtcAudioManager {
     // as well. The NDK doc states that: "As of API level 21, lower latency
     // audio input is supported on select devices. To take advantage of this
     // feature, first confirm that lower latency output is available".
-    return isLowLatencyOutputSupported();
+    return Build.VERSION.SDK_INT >= 21 && isLowLatencyOutputSupported();
   }
 
   // Returns true if the device has professional audio level of functionality
@@ -301,6 +304,9 @@ public class WebRtcAudioManager {
   }
 
   private int getSampleRateForApiLevel() {
+    if (Build.VERSION.SDK_INT < 17) {
+      return WebRtcAudioUtils.getDefaultSampleRateHz();
+    }
     String sampleRateString = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE);
     return (sampleRateString == null) ? WebRtcAudioUtils.getDefaultSampleRateHz()
                                       : Integer.parseInt(sampleRateString);
@@ -309,6 +315,9 @@ public class WebRtcAudioManager {
   // Returns the native output buffer size for low-latency output streams.
   private int getLowLatencyOutputFramesPerBuffer() {
     assertTrue(isLowLatencyOutputSupported());
+    if (Build.VERSION.SDK_INT < 17) {
+      return DEFAULT_FRAME_PER_BUFFER;
+    }
     String framesPerBuffer =
         audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER);
     return framesPerBuffer == null ? DEFAULT_FRAME_PER_BUFFER : Integer.parseInt(framesPerBuffer);

@@ -14,7 +14,7 @@ public final class ObjLoader {
     public float[] textureCoordinates;
     public float[] positions;
 
-    public ObjLoader(Context context, String file) {
+    public ObjLoader(Context context, String file, float scale) {
         ArrayList<Float> vertices = new ArrayList<>();
         ArrayList<Float> normals = new ArrayList<>();
         ArrayList<Float> textures = new ArrayList<>();
@@ -48,13 +48,14 @@ public final class ObjLoader {
 
             for (int i = 0; i < n; i++) {
                 int index = 3 * inputStream.readInt();
-                positions[positionIndex++] = vertices.get(index++);
-                positions[positionIndex++] = vertices.get(index++);
-                positions[positionIndex++] = vertices.get(index);
+                positions[positionIndex++] = vertices.get(index++) * scale;
+                positions[positionIndex++] = vertices.get(index++) * scale;
+                positions[positionIndex++] = vertices.get(index) * scale;
 
                 index = 2 * inputStream.readInt();
-                textureCoordinates[normalIndex++] = textures.get(index++);
-                textureCoordinates[normalIndex++] = 1 - textures.get(index);
+                textureCoordinates[normalIndex++] = index < 0 || index >= textures.size() ? 0 : textures.get(index);
+                index++;
+                textureCoordinates[normalIndex++] = index < 0 || index >= textures.size() ? 0 : 1 - textures.get(index);
 
                 index = 3 * inputStream.readInt();
                 this.normals[textureIndex++] = normals.get(index++);

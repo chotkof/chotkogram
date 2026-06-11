@@ -39,6 +39,7 @@ import android.media.MediaCrypto;
 import android.media.MediaCryptoException;
 import android.media.MediaFormat;
 import android.media.metrics.LogSessionId;
+import android.opengl.EGLContext;
 import android.os.Bundle;
 import android.os.SystemClock;
 import androidx.annotation.CallSuper;
@@ -75,6 +76,8 @@ import com.google.android.exoplayer2.util.NalUnitUtil;
 import com.google.android.exoplayer2.util.TimedValueQueue;
 import com.google.android.exoplayer2.util.TraceUtil;
 import com.google.android.exoplayer2.util.Util;
+import com.google.android.exoplayer2.video.MediaCodecVideoRenderer;
+
 import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -140,7 +143,7 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
           format.sampleMimeType,
           secureDecoderRequired,
           mediaCodecInfo,
-          getDiagnosticInfoV21(cause),
+          Util.SDK_INT >= 21 ? getDiagnosticInfoV21(cause) : null,
           /* fallbackDecoderInitializationException= */ null);
     }
 
@@ -173,6 +176,7 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
           fallbackException);
     }
 
+    @RequiresApi(21)
     @Nullable
     private static String getDiagnosticInfoV21(@Nullable Throwable cause) {
       if (cause instanceof CodecException) {
@@ -318,7 +322,7 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
   private float targetPlaybackSpeed;
   @Nullable private MediaCodecAdapter codec;
   @Nullable private Format codecInputFormat;
-  @Nullable private MediaFormat codecOutputMediaFormat;
+  @Nullable public MediaFormat codecOutputMediaFormat;
   private boolean codecOutputMediaFormatChanged;
   private float codecOperatingRate;
   @Nullable private ArrayDeque<MediaCodecInfo> availableCodecInfos;
@@ -486,7 +490,8 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
       MediaCodecInfo codecInfo,
       Format format,
       @Nullable MediaCrypto crypto,
-      float codecOperatingRate);
+      float codecOperatingRate,
+      EGLContext context);
 
   protected final void maybeInitCodecOrBypass() throws ExoPlaybackException {
     if (codec != null || bypassEnabled || inputFormat == null) {
@@ -1098,7 +1103,7 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
     }
     codecInitializingTimestamp = SystemClock.elapsedRealtime();
     MediaCodecAdapter.Configuration configuration =
-        getMediaCodecConfiguration(codecInfo, inputFormat, crypto, codecOperatingRate);
+        getMediaCodecConfiguration(codecInfo, inputFormat, crypto, codecOperatingRate, this instanceof MediaCodecVideoRenderer ? ((MediaCodecVideoRenderer) this).eglContext : null);
     if (Util.SDK_INT >= 31) {
       Api31.setLogSessionIdToMediaCodecFormat(configuration, getPlayerId());
     }
@@ -2305,13 +2310,14 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
   }
 
   private static boolean isMediaCodecException(IllegalStateException error) {
-    if (isMediaCodecExceptionV21(error)) {
+    if (Util.SDK_INT >= 21 && isMediaCodecExceptionV21(error)) {
       return true;
     }
     StackTraceElement[] stackTrace = error.getStackTrace();
     return stackTrace.length > 0 && stackTrace[0].getClassName().equals("android.media.MediaCodec");
   }
 
+  @RequiresApi(21)
   private static boolean isMediaCodecExceptionV21(IllegalStateException error) {
     return error instanceof MediaCodec.CodecException;
   }
@@ -2389,7 +2395,9 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
    * @return True if the decoder is known to fail if NAL units are queued before CSD.
    */
   private static boolean codecNeedsDiscardToSpsWorkaround(String name, Format format) {
-    return false;
+    return Util.SDK_INT < 21
+        && format.initializationData.isEmpty()
+        && "OMX.MTK.VIDEO.DECODER.AVC".equals(name);
   }
 
   /**
@@ -2449,7 +2457,11 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
    *     buffer with {@link MediaCodec#BUFFER_FLAG_END_OF_STREAM} set. False otherwise.
    */
   private static boolean codecNeedsEosFlushWorkaround(String name) {
-    return Util.SDK_INT <= 23 && "OMX.google.vorbis.decoder".equals(name);
+    return (Util.SDK_INT <= 23 && "OMX.google.vorbis.decoder".equals(name))
+        || (Util.SDK_INT <= 19
+            && ("hb2000".equals(Util.DEVICE) || "stvm8".equals(Util.DEVICE))
+            && ("OMX.amlogic.avc.decoder.awesome".equals(name)
+                || "OMX.amlogic.avc.decoder.awesome.secure".equals(name)));
   }
 
   /**
@@ -2500,7 +2512,9 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
    *     channel. False otherwise.
    */
   private static boolean codecNeedsMonoChannelCountWorkaround(String name, Format format) {
-    return false;
+    return Util.SDK_INT <= 18
+        && format.channelCount == 1
+        && "OMX.MTK.AUDIO.DECODER.MP3".equals(name);
   }
 
   @RequiresApi(31)

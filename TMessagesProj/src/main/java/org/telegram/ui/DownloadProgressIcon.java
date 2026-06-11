@@ -7,6 +7,8 @@ import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.view.View;
 
+import com.google.android.exoplayer2.util.Log;
+
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.DownloadController;
 import org.telegram.messenger.FileLoader;
@@ -37,21 +39,16 @@ public class DownloadProgressIcon extends View implements NotificationCenter.Not
     boolean showCompletedIcon;
     boolean hasUnviewedDownloads;
     int currentColor;
+    private boolean wasDrawn;
 
     public DownloadProgressIcon(int currentAccount, Context context) {
         super(context);
         this.currentAccount = currentAccount;
+        downloadImageReceiver.ignoreNotifications = true;
+        downloadCompleteImageReceiver.ignoreNotifications = true;
 
         downloadDrawable = new RLottieDrawable(R.raw.download_progress, "download_progress", AndroidUtilities.dp(28), AndroidUtilities.dp(28), true, null);
-        downloadDrawable.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_actionBarDefaultIcon), PorterDuff.Mode.MULTIPLY));
         downloadCompleteDrawable = new RLottieDrawable(R.raw.download_finish, "download_finish", AndroidUtilities.dp(28), AndroidUtilities.dp(28), true, null);
-        downloadCompleteDrawable.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_actionBarDefaultIcon), PorterDuff.Mode.MULTIPLY));
-
-        downloadDrawable.setLayerColor("Shape Layer 3.**", Theme.getColor(Theme.key_actionBarDefaultIcon));
-        downloadDrawable.setLayerColor("Arrow 4.**", Theme.getColor(Theme.key_actionBarDefaultIcon));
-        downloadCompleteDrawable.setLayerColor("Shape Layer 8.**", Theme.getColor(Theme.key_actionBarDefaultIcon));
-        downloadCompleteDrawable.setLayerColor("Arrow 8.**", Theme.getColor(Theme.key_actionBarDefaultIcon));
-
 
         downloadImageReceiver.setImageBitmap(downloadDrawable);
         downloadCompleteImageReceiver.setImageBitmap(downloadCompleteDrawable);
@@ -59,6 +56,12 @@ public class DownloadProgressIcon extends View implements NotificationCenter.Not
         downloadImageReceiver.setAutoRepeat(1);
         downloadDrawable.setAutoRepeat(1);
         downloadDrawable.start();
+    }
+
+    public void updateColors() {
+        downloadDrawable.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_actionBarDefaultIcon), PorterDuff.Mode.MULTIPLY));
+        downloadCompleteDrawable.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_actionBarDefaultIcon), PorterDuff.Mode.MULTIPLY));
+        invalidate();
     }
 
     @Override
@@ -126,6 +129,9 @@ public class DownloadProgressIcon extends View implements NotificationCenter.Not
             }
         }
         canvas.restore();
+        if (getAlpha() != 0) {
+            wasDrawn = true;
+        }
     }
 
     @Override
@@ -166,13 +172,15 @@ public class DownloadProgressIcon extends View implements NotificationCenter.Not
                 currentListeners.add(progressObserver);
             }
         }
-        if (currentListeners.size() == 0 && (getVisibility() != View.VISIBLE || getAlpha() != 1f)) {
+        if (currentListeners.size() == 0 && !wasDrawn) {
             if (DownloadController.getInstance(currentAccount).hasUnviewedDownloads()) {
                 progress = 1f;
                 currentProgress = 1f;
+                showCompletedIcon = true;
             } else {
                 progress = 0;
                 currentProgress = 0;
+                showCompletedIcon = false;
             }
         }
     }
@@ -253,4 +261,19 @@ public class DownloadProgressIcon extends View implements NotificationCenter.Not
         }
     }
 
+    @Override
+    public void setAlpha(float alpha) {
+        if (alpha == 0) {
+            wasDrawn = false;
+        }
+        super.setAlpha(alpha);
+    }
+
+    @Override
+    public void setVisibility(int visibility) {
+        if (visibility != View.VISIBLE) {
+            wasDrawn = false;
+        }
+        super.setVisibility(visibility);
+    }
 }

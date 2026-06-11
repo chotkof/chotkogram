@@ -17,6 +17,7 @@ import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.tgnet.TLRPC;
+import org.telegram.tgnet.tl.TL_account;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BackDrawable;
@@ -86,7 +87,7 @@ public class TopicsNotifySettingsFragments extends BaseFragment {
                     topicsFragment.setOnTopicSelectedListener((topic) -> {
                         Bundle bundle2 = new Bundle();
                         bundle2.putLong("dialog_id", dialogId);
-                        bundle2.putInt("topic_id", topic.id);
+                        bundle2.putLong("topic_id", topic.id);
                         bundle2.putBoolean("exception", true);
                         ProfileNotificationsActivity fragment = new ProfileNotificationsActivity(bundle2);
                         fragment.setDelegate(exception -> {
@@ -102,7 +103,7 @@ public class TopicsNotifySettingsFragments extends BaseFragment {
                     TLRPC.TL_forumTopic topic = (TLRPC.TL_forumTopic) items.get(position).topic;
                     Bundle bundle = new Bundle();
                     bundle.putLong("dialog_id", dialogId);
-                    bundle.putInt("topic_id", topic.id);
+                    bundle.putLong("topic_id", topic.id);
                     bundle.putBoolean("exception", false);
                     ProfileNotificationsActivity topicsFragment = new ProfileNotificationsActivity(bundle);
                     topicsFragment.setDelegate(new ProfileNotificationsActivity.ProfileNotificationsActivityDelegate() {
@@ -126,9 +127,9 @@ public class TopicsNotifySettingsFragments extends BaseFragment {
 
                 if (items.get(position).viewType == VIEW_TYPE_DELETE_ALL) {
                     AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
-                    builder.setTitle(LocaleController.getString("NotificationsDeleteAllExceptionTitle", R.string.NotificationsDeleteAllExceptionTitle));
-                    builder.setMessage(LocaleController.getString("NotificationsDeleteAllExceptionAlert", R.string.NotificationsDeleteAllExceptionAlert));
-                    builder.setPositiveButton(LocaleController.getString("Delete", R.string.Delete), (dialogInterface, i) -> {
+                    builder.setTitle(LocaleController.getString(R.string.NotificationsDeleteAllExceptionTitle));
+                    builder.setMessage(LocaleController.getString(R.string.NotificationsDeleteAllExceptionAlert));
+                    builder.setPositiveButton(LocaleController.getString(R.string.Delete), (dialogInterface, i) -> {
                         Iterator<Integer> iterator = exceptionsTopics.iterator();
                         while (iterator.hasNext()) {
                             int topicId = iterator.next();
@@ -137,7 +138,7 @@ public class TopicsNotifySettingsFragments extends BaseFragment {
                         exceptionsTopics.clear();
                         updateRows();
                     });
-                    builder.setNegativeButton(LocaleController.getString("Cancel", R.string.Cancel), null);
+                    builder.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
                     AlertDialog alertDialog = builder.create();
                     showDialog(alertDialog);
                     TextView button = (TextView) alertDialog.getButton(DialogInterface.BUTTON_POSITIVE);
@@ -154,7 +155,7 @@ public class TopicsNotifySettingsFragments extends BaseFragment {
 
     private void removeException(int topicId) {
         getNotificationsController().getNotificationsSettingsFacade().clearPreference(dialogId, topicId);
-        TLRPC.TL_account_updateNotifySettings req = new TLRPC.TL_account_updateNotifySettings();
+        TL_account.updateNotifySettings req = new TL_account.updateNotifySettings();
         req.settings = new TLRPC.TL_inputPeerNotifySettings();
         TLRPC.TL_inputNotifyForumTopic topicPeer = new TLRPC.TL_inputNotifyForumTopic();
         topicPeer.peer = getMessagesController().getInputPeer(dialogId);
@@ -218,7 +219,7 @@ public class TopicsNotifySettingsFragments extends BaseFragment {
                     break;
                 case VIEW_TYPE_ADD_EXCEPTION:
                     TextCell textCell = new TextCell(parent.getContext());
-                    textCell.setTextAndIcon(LocaleController.getString("NotificationsAddAnException", R.string.NotificationsAddAnException), R.drawable.msg_contact_add, true);
+                    textCell.setTextAndIcon(LocaleController.getString(R.string.NotificationsAddAnException), R.drawable.msg_contact_add, true);
                     textCell.setColors(Theme.key_windowBackgroundWhiteBlueIcon, Theme.key_windowBackgroundWhiteBlueButton);
                     view = textCell;
                     view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
@@ -228,7 +229,7 @@ public class TopicsNotifySettingsFragments extends BaseFragment {
                     break;
                 case VIEW_TYPE_DELETE_ALL:
                     textCell = new TextCell(parent.getContext());
-                    textCell.setText(LocaleController.getString("NotificationsDeleteAllException", R.string.NotificationsDeleteAllException), false);
+                    textCell.setText(LocaleController.getString(R.string.NotificationsDeleteAllException), false);
                     textCell.setColors(-1, Theme.key_text_RedRegular);
                     view = textCell;
                     view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));

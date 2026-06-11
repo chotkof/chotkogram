@@ -32,8 +32,6 @@ import org.telegram.ui.Components.CheckBox2;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.URLSpanNoUnderline;
 
-import com.exteragram.messenger.ExteraConfig;
-
 public class AdminedChannelCell extends FrameLayout {
 
     private BackupImageView avatarImageView;
@@ -51,7 +49,7 @@ public class AdminedChannelCell extends FrameLayout {
 
         avatarDrawable = new AvatarDrawable();
         avatarImageView = new BackupImageView(context);
-        avatarImageView.setRoundRadius(ExteraConfig.getAvatarCorners(48));
+        avatarImageView.setRoundRadius(AndroidUtilities.dp(24));
         addView(avatarImageView, LayoutHelper.createFrame(48, 48, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, LocaleController.isRTL ? 0 : 12 + padding, 6, LocaleController.isRTL ? 12 + padding : 0, 6));
 
         if (needCheck) {
@@ -90,7 +88,7 @@ public class AdminedChannelCell extends FrameLayout {
     public void setChannel(TLRPC.Chat channel, boolean last) {
         final String url = MessagesController.getInstance(currentAccount).linkPrefix + "/";
         currentChannel = channel;
-        avatarDrawable.setInfo(channel);
+        avatarDrawable.setInfo(currentAccount, channel);
         nameTextView.setText(channel.title);
         SpannableStringBuilder stringBuilder = new SpannableStringBuilder(url + ChatObject.getPublicUsername(channel));
         stringBuilder.setSpan(new URLSpanNoUnderline(""), url.length(), stringBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -100,7 +98,7 @@ public class AdminedChannelCell extends FrameLayout {
     }
 
     public void update() {
-        avatarDrawable.setInfo(currentChannel);
+        avatarDrawable.setInfo(currentAccount, currentChannel);
         avatarImageView.invalidate();
     }
 

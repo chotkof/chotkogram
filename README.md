@@ -1,21 +1,21 @@
-# AyuGram for Android
+# ChotkoGram for Android
 
-![AyuGram Logo](.github/AyuGram.png)
+![ChotkoGram Logo](logo.png)
 
 ## What's this fork even about?
 
 **Is it just exteraGram+Telegraher?**
 
-**AyuGram4A** is a fork of [exteraGram](https://github.com/exteraSquad/exteraGram) with
+**ChotkoGram** is a fork of [exteraGram](https://github.com/exteraSquad/exteraGram) with
 some patches from [Telegraher](https://github.com/nikitasius/Telegraher).
 
 But it's not just exteraGram with Telegraher's commits, **it's a fully reworked version**.
 
-The main difference between AyuGram and Telegraher is that AyuGram **saves** your messages history,
+The main difference between ChotkoGram and Telegraher is that ChotkoGram **saves** your messages history,
 while Telegraher just **caches** them.
 It means that you can clean your cache and still have all saved messages.
 
-Also, AyuGram has **full ghost mode**.
+Also, ChotkoGram has **full ghost mode**.
 It allows you to hide your online status from other users, even if you send them
 a message.
 
@@ -49,28 +49,18 @@ a message.
 Note that we use **Crashlytics**.
 If you don't want to send crash reports, you can disable it in **exteraGram Preferences**.
 
-**AyuGram4A** does **NOT** include proprietary **exteraGram** features.
-
-## Preview
-
-💖 **Made with extera's Monet theme.**
-
-<img src='.github/demos/demo1.png' width='210'> <img src='.github/demos/demo2.png' width='210'>
-
-<img src='.github/demos/demo3.png' width='210'> <img src='.github/demos/demo4.png' width='210'>
-
-<img src='.github/demos/demo5.png' width='210'> <img src='.github/demos/demo6.png' width='210'>
+**ChotkoGram** does **NOT** include proprietary **exteraGram** features.
 
 ## Downloads?
 
-Follow our **[Telegram channel](https://t.me/ayugram1338)** and join our [chat](https://t.me/ayugramchat)!
+Follow our **[Telegram channel](https://t.me/ChotkoGram)** and join our [chat](https://t.me/ChotkoGramChat)!
 
 Preview versions can be downloaded
-from the **[dedicated topic](https://t.me/ayugramchat/1238)**.
+from the **[dedicated topic](https://t.me/ChotkoGramChat/1238)**.
 
 ## Want to throw some money?
 
-Developing AyuGram is not such a simple task.
+Developing ChotkoGram is not such a simple task.
 **We'd be grateful for any donation <3**
 
 All available methods can be found **[here](https://ayusync.cloud/ui/donate)**.
@@ -81,7 +71,7 @@ All available methods can be found **[here](https://ayusync.cloud/ui/donate)**.
 You can either use official server or host your own.
 It can sync read states and message history.
 
-Server backend can be found **[here](https://github.com/AyuGram/AyuSyncBackend)**.
+Server backend can be found **[here](https://github.com/ChotkoGram/AyuSyncBackend)**.
 
 ## Want to contribute?
 
@@ -97,7 +87,7 @@ Well, just fork it.
 
 ## How to build
 
-1. Clone source code using `git clone https://github.com/AyuGram/AyuGram4A.git`
+1. Clone source code using `git clone https://github.com/ChotkoGram/ChotkoGram.git`
 2. Open the project in Android Studio. It should be opened, **not imported**
 3. Implement the `AyuMessageUtils` & `AyuHistoryHook` classes. It's not that hard, but if you're
    making your **very** own fork, then you should take some time to write this part of code. Or you can search for a reversed version :)
@@ -112,22 +102,22 @@ Well, just fork it.
    SIGNING_KEY_ALIAS = alias
    SIGNING_KEY_STORE_PASSWORD = password
    ```
-6. You are ready to compile `AyuGram`
+6. You are ready to compile `ChotkoGram`
 
-- **AyuGram** can be built with **Android Studio** or from the command line with **Gradle**:
+- **ChotkoGram** can be built with **Android Studio** or from the command line with **Gradle**:
 
 ```
 ./gradlew assembleAfatRelease
 ```
 
-## AyuGram Localization
+## ChotkoGram Localization
 
-[![Crowdin](https://badges.crowdin.net/ayugram/localized.svg)](https://crowdin.com/project/ayugram)
+[![Crowdin](https://badges.crowdin.net/chotkogram/localized.svg)](https://crowdin.com/project/chotkogram)
 [![Crowdin](https://badges.crowdin.net/exteralocales/localized.svg)](https://crowdin.com/project/exteralocales)
 
-We have our own **[Crowdin](https://crowdin.com/project/ayugram)**.
+We have our own **[Crowdin](https://crowdin.com/project/chotkogram)**.
 
-But since **AyuGram** is based on **exteraGram**, also join their project
+But since **ChotkoGram** is based on **exteraGram**, also join their project
 at **[Crowdin](https://crowdin.com/project/exteralocales)**!
 
 ## Credits

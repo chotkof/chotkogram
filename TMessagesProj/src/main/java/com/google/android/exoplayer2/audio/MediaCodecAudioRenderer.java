@@ -28,6 +28,7 @@ import android.media.AudioFormat;
 import android.media.MediaCodec;
 import android.media.MediaCrypto;
 import android.media.MediaFormat;
+import android.opengl.EGLContext;
 import android.os.Handler;
 import androidx.annotation.CallSuper;
 import androidx.annotation.DoNotInline;
@@ -284,7 +285,7 @@ public class MediaCodecAudioRenderer extends MediaCodecRenderer implements Media
       return RendererCapabilities.create(C.FORMAT_UNSUPPORTED_TYPE);
     }
     @TunnelingSupport
-    int tunnelingSupport = TUNNELING_SUPPORTED;
+    int tunnelingSupport = Util.SDK_INT >= 21 ? TUNNELING_SUPPORTED : TUNNELING_NOT_SUPPORTED;
     boolean formatHasDrm = format.cryptoType != C.CRYPTO_TYPE_NONE;
     boolean supportsFormatDrm = supportsFormatDrm(format);
     // In direct mode, if the format has DRM then we need to use a decoder that only decrypts.
@@ -418,7 +419,9 @@ public class MediaCodecAudioRenderer extends MediaCodecRenderer implements Media
       MediaCodecInfo codecInfo,
       Format format,
       @Nullable MediaCrypto crypto,
-      float codecOperatingRate) {
+      float codecOperatingRate,
+      EGLContext parentContext
+  ) {
     codecMaxInputSize = getCodecMaxInputSize(codecInfo, format, getStreamFormats());
     codecNeedsDiscardChannelsWorkaround = codecNeedsDiscardChannelsWorkaround(codecInfo.name);
     MediaFormat mediaFormat =

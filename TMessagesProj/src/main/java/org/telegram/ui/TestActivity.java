@@ -21,6 +21,7 @@ import org.webrtc.Camera2Enumerator;
 import org.webrtc.CameraEnumerator;
 import org.webrtc.VideoCapturer;
 
+@TargetApi(18)
 public class TestActivity extends BaseFragment {
 
     public TestActivity() {

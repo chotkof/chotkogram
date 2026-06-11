@@ -78,6 +78,7 @@ public class VoIPFloatingLayout extends FrameLayout {
     public float updatePositionFromX;
     public float updatePositionFromY;
     public boolean switchingToPip;
+    public boolean isAppearing;
     Drawable outerShadow;
 
     ValueAnimator switchToFloatingModeAnimator;
@@ -109,25 +110,28 @@ public class VoIPFloatingLayout extends FrameLayout {
     public VoIPFloatingLayout(@NonNull Context context) {
         super(context);
         touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
-        setOutlineProvider(new ViewOutlineProvider() {
-            @Override
-            public void getOutline(View view, Outline outline) {
-                if (overrideCornerRadius >= 0) {
-                    if (overrideCornerRadius < 1) {
-                        outline.setRect(0, 0, view.getMeasuredWidth(), view.getMeasuredHeight());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            setOutlineProvider(new ViewOutlineProvider() {
+                @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+                @Override
+                public void getOutline(View view, Outline outline) {
+                    if (overrideCornerRadius >= 0) {
+                        if (overrideCornerRadius < 1) {
+                            outline.setRect(0, 0, view.getMeasuredWidth(), view.getMeasuredHeight());
+                        } else {
+                            outline.setRoundRect(0, 0, view.getMeasuredWidth(), view.getMeasuredHeight(), overrideCornerRadius);
+                        }
                     } else {
-                        outline.setRoundRect(0, 0, view.getMeasuredWidth(), view.getMeasuredHeight(), overrideCornerRadius);
-                    }
-                } else {
-                    if (!floatingMode) {
-                        outline.setRect(0, 0, view.getMeasuredWidth(), view.getMeasuredHeight());
-                    } else {
-                        outline.setRoundRect(0, 0, view.getMeasuredWidth(), view.getMeasuredHeight(), floatingMode ? AndroidUtilities.dp(4) : 0);
+                        if (!floatingMode) {
+                            outline.setRect(0, 0, view.getMeasuredWidth(), view.getMeasuredHeight());
+                        } else {
+                            outline.setRoundRect(0, 0, view.getMeasuredWidth(), view.getMeasuredHeight(), floatingMode ? AndroidUtilities.dp(4) : 0);
+                        }
                     }
                 }
-            }
-        });
-        setClipToOutline(true);
+            });
+            setClipToOutline(true);
+        }
         mutedPaint.setColor(ColorUtils.setAlphaComponent(Color.BLACK, (int) (255 * 0.4f)));
         mutedDrawable = ContextCompat.getDrawable(context, R.drawable.calls_mute_mini);
     }
@@ -235,7 +239,7 @@ public class VoIPFloatingLayout extends FrameLayout {
 
                     float maxTop = topPadding;
                     float maxBottom = bottomPadding;
-                    if (lastInsets != null) {
+                    if (Build.VERSION.SDK_INT > Build.VERSION_CODES.KITKAT_WATCH && lastInsets != null) {
                         maxTop += lastInsets.getSystemWindowInsetTop();
                         maxBottom += lastInsets.getSystemWindowInsetBottom();
                     }
@@ -263,12 +267,16 @@ public class VoIPFloatingLayout extends FrameLayout {
     protected void dispatchDraw(Canvas canvas) {
         boolean animated = false;
         if (updatePositionFromX >= 0) {
-            animate().setListener(null).cancel();
+            if(!isAppearing) {
+                animate().setListener(null).cancel();
+            }
             setTranslationX(updatePositionFromX);
             setTranslationY(updatePositionFromY);
-            setScaleX(1f);
-            setScaleY(1f);
-            setAlpha(1f);
+            if(!isAppearing) {
+                setScaleX(1f);
+                setScaleY(1f);
+                setAlpha(1f);
+            }
             updatePositionFromX = -1f;
             updatePositionFromY = -1f;
         }
@@ -344,8 +352,8 @@ public class VoIPFloatingLayout extends FrameLayout {
             return;
         }
 
-        float maxTop = lastInsets == null ? 0 : lastInsets.getSystemWindowInsetTop() + topPadding;
-        float maxBottom = lastInsets == null ? 0 : lastInsets.getSystemWindowInsetBottom() + bottomPadding;
+        float maxTop = (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT_WATCH || lastInsets == null ? 0 : lastInsets.getSystemWindowInsetTop() + topPadding);
+        float maxBottom = (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT_WATCH || lastInsets == null ? 0 : lastInsets.getSystemWindowInsetBottom() + bottomPadding);
 
         float xPoint = leftPadding + (((View) parent).getMeasuredWidth() - leftPadding - rightPadding - width) * xRelative;
         float yPoint = maxTop + (((View) parent).getMeasuredHeight() - maxBottom - maxTop - height) * yRelative;
@@ -356,7 +364,7 @@ public class VoIPFloatingLayout extends FrameLayout {
                     .translationX(xPoint)
                     .translationY(yPoint)
                     .alpha(1f)
-                    .setStartDelay(0)
+                    .setStartDelay(uiVisible ? 0 : 150)
                     .setDuration(150).setInterpolator(CubicBezierInterpolator.DEFAULT).start();
         } else {
             if (!alwaysFloating) {
@@ -380,7 +388,9 @@ public class VoIPFloatingLayout extends FrameLayout {
                 setedFloatingMode = show;
                 toFloatingModeProgress = floatingMode ? 1f : 0f;
                 requestLayout();
-                invalidateOutline();
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    invalidateOutline();
+                }
             }
             return;
         }
@@ -498,7 +508,9 @@ public class VoIPFloatingLayout extends FrameLayout {
 
     public void setCornerRadius(float cornerRadius) {
         overrideCornerRadius = cornerRadius;
-        invalidateOutline();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            invalidateOutline();
+        }
     }
 
     public void setOnTapListener(OnClickListener tapListener) {
@@ -511,8 +523,8 @@ public class VoIPFloatingLayout extends FrameLayout {
             return;
         }
 
-        float maxTop = lastInsets == null ? 0 : lastInsets.getSystemWindowInsetTop() + topPadding;
-        float maxBottom = lastInsets == null ? 0 : lastInsets.getSystemWindowInsetBottom() + bottomPadding;
+        float maxTop = (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT_WATCH || lastInsets == null ? 0 : lastInsets.getSystemWindowInsetTop() + topPadding);
+        float maxBottom = (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT_WATCH || lastInsets == null ? 0 : lastInsets.getSystemWindowInsetBottom() + bottomPadding);
 
         float xRelative = (fromLayout.getTranslationX() - leftPadding) / (((View) parent).getMeasuredWidth() - leftPadding - rightPadding - fromLayout.getMeasuredWidth());
         float yRelative = (fromLayout.getTranslationY() - maxTop) / (((View) parent).getMeasuredHeight() - maxBottom - maxTop - fromLayout.getMeasuredHeight());
@@ -533,8 +545,8 @@ public class VoIPFloatingLayout extends FrameLayout {
             if (parent == null) {
                 return;
             }
-            float maxTop = lastInsets == null ? 0 : lastInsets.getSystemWindowInsetTop() + topPadding;
-            float maxBottom = lastInsets == null ? 0 : lastInsets.getSystemWindowInsetBottom() + bottomPadding;
+            float maxTop = (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT_WATCH || lastInsets == null ? 0 : lastInsets.getSystemWindowInsetTop() + topPadding);
+            float maxBottom = (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT_WATCH || lastInsets == null ? 0 : lastInsets.getSystemWindowInsetBottom() + bottomPadding);
 
             savedRelativePositionX = (getTranslationX() - leftPadding) / (((View) parent).getMeasuredWidth() - leftPadding - rightPadding - getMeasuredWidth());
             savedRelativePositionY = (getTranslationY() - maxTop) / (((View) parent).getMeasuredHeight() - maxBottom - maxTop - getMeasuredHeight());

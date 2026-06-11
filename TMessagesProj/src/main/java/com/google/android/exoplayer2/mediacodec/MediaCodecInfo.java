@@ -263,9 +263,22 @@ public final class MediaCodecInfo {
       if (format.width <= 0 || format.height <= 0) {
         return true;
       }
-      return isVideoSizeAndRateSupportedV21(format.width, format.height, format.frameRate);
+      if (Util.SDK_INT >= 21) {
+        return isVideoSizeAndRateSupportedV21(format.width, format.height, format.frameRate);
+      } else {
+        boolean isFormatSupported =
+            format.width * format.height <= MediaCodecUtil.maxH264DecodableFrameSize();
+        if (!isFormatSupported) {
+          logNoSupport("legacyFrameSize, " + format.width + "x" + format.height);
+        }
+        return isFormatSupported;
+      }
     } else { // Audio
-      return (format.sampleRate == Format.NO_VALUE || isAudioSampleRateSupportedV21(format.sampleRate)) && (format.channelCount == Format.NO_VALUE || isAudioChannelCountSupportedV21(format.channelCount));
+      return Util.SDK_INT < 21
+          || ((format.sampleRate == Format.NO_VALUE
+                  || isAudioSampleRateSupportedV21(format.sampleRate))
+              && (format.channelCount == Format.NO_VALUE
+                  || isAudioChannelCountSupportedV21(format.channelCount)));
     }
   }
 
@@ -492,6 +505,7 @@ public final class MediaCodecInfo {
    *     Format#NO_VALUE} or any value less than or equal to 0.
    * @return Whether the decoder supports video with the given width, height and frame rate.
    */
+  @RequiresApi(21)
   public boolean isVideoSizeAndRateSupportedV21(int width, int height, double frameRate) {
     if (capabilities == null) {
       logNoSupport("sizeAndRate.caps");
@@ -541,6 +555,7 @@ public final class MediaCodecInfo {
    *     codec.
    */
   @Nullable
+  @RequiresApi(21)
   public Point alignVideoSizeV21(int width, int height) {
     if (capabilities == null) {
       return null;
@@ -560,6 +575,7 @@ public final class MediaCodecInfo {
    * @param sampleRate The sample rate in Hz.
    * @return Whether the decoder supports audio with the given sample rate.
    */
+  @RequiresApi(21)
   public boolean isAudioSampleRateSupportedV21(int sampleRate) {
     if (capabilities == null) {
       logNoSupport("sampleRate.caps");
@@ -585,6 +601,7 @@ public final class MediaCodecInfo {
    * @param channelCount The channel count.
    * @return Whether the decoder supports audio with the given channel count.
    */
+  @RequiresApi(21)
   public boolean isAudioChannelCountSupportedV21(int channelCount) {
     if (capabilities == null) {
       logNoSupport("channelCount.caps");
@@ -638,16 +655,16 @@ public final class MediaCodecInfo {
       return maxChannelCount;
     }
     if (MimeTypes.AUDIO_MPEG.equals(mimeType)
-            || MimeTypes.AUDIO_AMR_NB.equals(mimeType)
-            || MimeTypes.AUDIO_AMR_WB.equals(mimeType)
-            || MimeTypes.AUDIO_AAC.equals(mimeType)
-            || MimeTypes.AUDIO_VORBIS.equals(mimeType)
-            || MimeTypes.AUDIO_OPUS.equals(mimeType)
-            || MimeTypes.AUDIO_RAW.equals(mimeType)
-            || MimeTypes.AUDIO_FLAC.equals(mimeType)
-            || MimeTypes.AUDIO_ALAW.equals(mimeType)
-            || MimeTypes.AUDIO_MLAW.equals(mimeType)
-            || MimeTypes.AUDIO_MSGSM.equals(mimeType)) {
+        || MimeTypes.AUDIO_AMR_NB.equals(mimeType)
+        || MimeTypes.AUDIO_AMR_WB.equals(mimeType)
+        || MimeTypes.AUDIO_AAC.equals(mimeType)
+        || MimeTypes.AUDIO_VORBIS.equals(mimeType)
+        || MimeTypes.AUDIO_OPUS.equals(mimeType)
+        || MimeTypes.AUDIO_RAW.equals(mimeType)
+        || MimeTypes.AUDIO_FLAC.equals(mimeType)
+        || MimeTypes.AUDIO_ALAW.equals(mimeType)
+        || MimeTypes.AUDIO_MLAW.equals(mimeType)
+        || MimeTypes.AUDIO_MSGSM.equals(mimeType)) {
       // Platform code should have set a default.
       return maxChannelCount;
     }
@@ -674,29 +691,33 @@ public final class MediaCodecInfo {
   }
 
   private static boolean isAdaptive(CodecCapabilities capabilities) {
-    return isAdaptiveV19(capabilities);
+    return Util.SDK_INT >= 19 && isAdaptiveV19(capabilities);
   }
 
+  @RequiresApi(19)
   private static boolean isAdaptiveV19(CodecCapabilities capabilities) {
     return capabilities.isFeatureSupported(CodecCapabilities.FEATURE_AdaptivePlayback);
   }
 
   private static boolean isTunneling(CodecCapabilities capabilities) {
-    return isTunnelingV21(capabilities);
+    return Util.SDK_INT >= 21 && isTunnelingV21(capabilities);
   }
 
+  @RequiresApi(21)
   private static boolean isTunnelingV21(CodecCapabilities capabilities) {
     return capabilities.isFeatureSupported(CodecCapabilities.FEATURE_TunneledPlayback);
   }
 
   private static boolean isSecure(CodecCapabilities capabilities) {
-    return isSecureV21(capabilities);
+    return Util.SDK_INT >= 21 && isSecureV21(capabilities);
   }
 
+  @RequiresApi(21)
   private static boolean isSecureV21(CodecCapabilities capabilities) {
     return capabilities.isFeatureSupported(CodecCapabilities.FEATURE_SecurePlayback);
   }
 
+  @RequiresApi(21)
   private static boolean areSizeAndRateSupportedV21(
       VideoCapabilities capabilities, int width, int height, double frameRate) {
     // Don't ever fail due to alignment. See: https://github.com/google/ExoPlayer/issues/6551.
@@ -717,6 +738,7 @@ public final class MediaCodecInfo {
     }
   }
 
+  @RequiresApi(21)
   private static Point alignVideoSizeV21(VideoCapabilities capabilities, int width, int height) {
     int widthAlignment = capabilities.getWidthAlignment();
     int heightAlignment = capabilities.getHeightAlignment();

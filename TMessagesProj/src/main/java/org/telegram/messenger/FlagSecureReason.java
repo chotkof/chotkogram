@@ -9,8 +9,8 @@ public class FlagSecureReason {
 
     private static HashMap<Window, Integer> currentSecureReasons;
 
-    private Window window;
-    private FlagSecureCondition condition;
+    private final Window window;
+    private final FlagSecureCondition condition;
 
     public FlagSecureReason(Window window, FlagSecureCondition condition) {
         this.window = window;
@@ -64,14 +64,18 @@ public class FlagSecureReason {
             return;
         }
 
-        // AyuGram: removed
-        window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
+        if (isSecuredNow(window)) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+            AndroidUtilities.logFlagSecure();
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
+            AndroidUtilities.logFlagSecure();
+        }
     }
 
     public static boolean isSecuredNow(Window window) {
         return currentSecureReasons != null && currentSecureReasons.get(window) != null;
     }
-
 
     public interface FlagSecureCondition {
         boolean run();

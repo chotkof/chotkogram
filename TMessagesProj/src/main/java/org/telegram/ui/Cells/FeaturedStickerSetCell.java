@@ -44,8 +44,6 @@ import org.telegram.ui.Components.BackupImageView;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.ProgressButton;
 
-import com.exteragram.messenger.ExteraConfig;
-
 public class FeaturedStickerSetCell extends FrameLayout {
 
     private TextView textView;
@@ -91,7 +89,7 @@ public class FeaturedStickerSetCell extends FrameLayout {
         addView(imageView, LayoutHelper.createFrame(48, 48, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, LocaleController.isRTL ? 0 : 12, 8, LocaleController.isRTL ? 12 : 0, 0));
 
         addButton = new ProgressButton(context);
-        addButton.setText(LocaleController.getString("Add", R.string.Add));
+        addButton.setText(LocaleController.getString(R.string.Add));
         addButton.setTextColor(Theme.getColor(Theme.key_featuredStickers_buttonText));
         addButton.setProgressColor(Theme.getColor(Theme.key_featuredStickers_buttonProgress));
         addButton.setBackgroundRoundRect(Theme.getColor(Theme.key_featuredStickers_addButton), Theme.getColor(Theme.key_featuredStickers_addButtonPressed));
@@ -199,7 +197,7 @@ public class FeaturedStickerSetCell extends FrameLayout {
                 imageLocation = ImageLocation.getForSticker(thumb, sticker, set.set.thumb_version);
             }
 
-            if (object instanceof TLRPC.Document && MessageObject.isAnimatedStickerDocument(sticker, true)) {
+            if (object instanceof TLRPC.Document && (MessageObject.isAnimatedStickerDocument(sticker, true) || MessageObject.isVideoSticker(sticker))) {
                 if (svgThumb != null) {
                     imageView.setImage(ImageLocation.getForDocument(sticker), "50_50", svgThumb, 0, set);
                 } else {
@@ -321,7 +319,7 @@ public class FeaturedStickerSetCell extends FrameLayout {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        if (needDivider && !ExteraConfig.disableDividers) {
+        if (needDivider) {
             canvas.drawLine(0, getHeight() - 1, getWidth() - getPaddingRight(), getHeight() - 1, Theme.dividerPaint);
         }
     }

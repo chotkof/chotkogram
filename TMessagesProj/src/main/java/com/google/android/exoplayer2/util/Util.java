@@ -39,7 +39,9 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.database.DatabaseUtils;
@@ -71,6 +73,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.C.ContentType;
+import com.google.android.exoplayer2.ExoPlayerLibraryInfo;
 import com.google.android.exoplayer2.Format;
 import com.google.android.exoplayer2.MediaItem;
 import com.google.android.exoplayer2.ParserException;
@@ -84,8 +87,6 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.SettableFuture;
-import com.radolyn.ayugram.exceptions.AyuPrivacyException;
-
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.File;
@@ -96,6 +97,7 @@ import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
@@ -1636,9 +1638,22 @@ public final class Util {
    * @param applicationName String that will be prefix'ed to the generated user agent.
    * @return A user agent string generated using the applicationName and the library version.
    */
-  public static String getUserAgent(Context context, String applicationName) throws AyuPrivacyException {
-    // AyuGram: it's not being called
-    throw new AyuPrivacyException();
+  public static String getUserAgent(Context context, String applicationName) {
+    String versionName;
+    try {
+      String packageName = context.getPackageName();
+      PackageInfo info = context.getPackageManager().getPackageInfo(packageName, 0);
+      versionName = info.versionName;
+    } catch (NameNotFoundException e) {
+      versionName = "?";
+    }
+    return applicationName
+        + "/"
+        + versionName
+        + " (Linux;Android "
+        + Build.VERSION.RELEASE
+        + ") "
+        + ExoPlayerLibraryInfo.VERSION_SLASHY;
   }
 
   /** Returns the number of codec strings in {@code codecs} whose type matches {@code trackType}. */
@@ -1922,7 +1937,7 @@ public final class Util {
       default:
         try {
           return UUID.fromString(drmScheme);
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
           return null;
         }
     }
@@ -2830,13 +2845,31 @@ public final class Util {
 
   @RequiresApi(api = Build.VERSION_CODES.M)
   private static boolean requestExternalStoragePermission(Activity activity) {
-    if (activity.checkSelfPermission(permission.READ_EXTERNAL_STORAGE)
-        != PackageManager.PERMISSION_GRANTED) {
-      activity.requestPermissions(
-          new String[] {permission.READ_EXTERNAL_STORAGE}, /* requestCode= */ 0);
-      return true;
+    if (Build.VERSION.SDK_INT >= 33) {
+      ArrayList<String> permissions = new ArrayList<>();
+      if (activity.checkSelfPermission(permission.READ_MEDIA_VIDEO) != PackageManager.PERMISSION_GRANTED) {
+        permissions.add(permission.READ_MEDIA_VIDEO);
+      }
+      if (activity.checkSelfPermission(permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED) {
+        permissions.add(permission.READ_MEDIA_IMAGES);
+      }
+      if (activity.checkSelfPermission(permission.READ_MEDIA_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+        permissions.add(permission.READ_MEDIA_AUDIO);
+      }
+      if (!permissions.isEmpty()) {
+        activity.requestPermissions(permissions.toArray(new String[0]), /* requestCode= */ 0);
+        return true;
+      }
+      return false;
+    } else {
+      if (activity.checkSelfPermission(permission.READ_EXTERNAL_STORAGE)
+          != PackageManager.PERMISSION_GRANTED) {
+        activity.requestPermissions(
+          new String[]{permission.READ_EXTERNAL_STORAGE}, /* requestCode= */ 0);
+        return true;
+      }
+      return false;
     }
-    return false;
   }
 
   @RequiresApi(api = Build.VERSION_CODES.N)

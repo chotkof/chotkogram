@@ -62,6 +62,7 @@ public class SharingLocationsAlert extends BottomSheet implements NotificationCe
         super(context, false, resourcesProvider);
         NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.liveLocationsChanged);
         delegate = sharingLocationsAlertDelegate;
+        fixNavigationBar();
 
         shadowDrawable = context.getResources().getDrawable(R.drawable.sheet_shadow_round).mutate();
         shadowDrawable.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_dialogBackground), PorterDuff.Mode.MULTIPLY));
@@ -85,7 +86,9 @@ public class SharingLocationsAlert extends BottomSheet implements NotificationCe
             @Override
             protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
                 int height = MeasureSpec.getSize(heightMeasureSpec);
-                height -= AndroidUtilities.statusBarHeight;
+                if (Build.VERSION.SDK_INT >= 21) {
+                    height -= AndroidUtilities.statusBarHeight;
+                }
                 int measuredWidth = getMeasuredWidth();
                 int contentSize = AndroidUtilities.dp(48 + 8) + AndroidUtilities.dp(56) + 1 + LocationController.getLocationsCount() * AndroidUtilities.dp(54);
 
@@ -176,7 +179,7 @@ public class SharingLocationsAlert extends BottomSheet implements NotificationCe
         containerView.addView(pickerBottomLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 48, Gravity.LEFT | Gravity.BOTTOM));
         pickerBottomLayout.cancelButton.setPadding(AndroidUtilities.dp(18), 0, AndroidUtilities.dp(18), 0);
         pickerBottomLayout.cancelButton.setTextColor(getThemedColor(Theme.key_text_RedBold));
-        pickerBottomLayout.cancelButton.setText(LocaleController.getString("StopAllLocationSharings", R.string.StopAllLocationSharings));
+        pickerBottomLayout.cancelButton.setText(LocaleController.getString(R.string.StopAllLocationSharings));
         pickerBottomLayout.cancelButton.setOnClickListener(view -> {
             for (int a = 0; a < UserConfig.MAX_ACCOUNT_COUNT; a++) {
                 LocationController.getInstance(a).removeAllLocationSharings();
@@ -184,7 +187,7 @@ public class SharingLocationsAlert extends BottomSheet implements NotificationCe
             dismiss();
         });
         pickerBottomLayout.doneButtonTextView.setTextColor(getThemedColor(Theme.key_dialogTextBlue2));
-        pickerBottomLayout.doneButtonTextView.setText(LocaleController.getString("Close", R.string.Close).toUpperCase());
+        pickerBottomLayout.doneButtonTextView.setText(LocaleController.getString(R.string.Close).toUpperCase());
         pickerBottomLayout.doneButton.setPadding(AndroidUtilities.dp(18), 0, AndroidUtilities.dp(18), 0);
         pickerBottomLayout.doneButton.setOnClickListener(view -> dismiss());
         pickerBottomLayout.doneButtonBadgeTextView.setVisibility(View.GONE);

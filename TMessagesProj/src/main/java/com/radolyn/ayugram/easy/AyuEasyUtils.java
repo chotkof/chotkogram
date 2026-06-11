@@ -1,5 +1,5 @@
 /*
- * This is the source code of AyuGram for Android.
+ * This is the source code of ChotkoGram for Android.
  *
  * We do not and cannot prevent the use of our code,
  * but be respectful and credit the original author.
@@ -57,7 +57,7 @@ public class AyuEasyUtils {
         var helper = SendMessagesHelper.getInstance(currentAccount);
 
         AndroidUtilities.runOnUIThread(() -> {
-            helper.sendMessage(
+            helper.sendMessage(SendMessagesHelper.SendMessageParams.of(
                     message,
                     peer,
                     replyToMsg,
@@ -69,9 +69,10 @@ public class AyuEasyUtils {
                     null,
                     notify,
                     0,
+                    0,
                     null,
                     false
-            );
+            ));
         });
 
         waiter.trySetSendingId(dialogId);
@@ -108,7 +109,7 @@ public class AyuEasyUtils {
         var params = createParams(groupId, isFinalInGroup);
 
         AndroidUtilities.runOnUIThread(() -> {
-            helper.sendMessage(
+            helper.sendMessage(SendMessagesHelper.SendMessageParams.of(
                     document,
                     null,
                     path,
@@ -122,10 +123,11 @@ public class AyuEasyUtils {
                     notify,
                     0,
                     0,
+                    0,
                     null,
                     null,
                     false
-            );
+            ));
         });
 
         if (waitToSend) {
@@ -174,7 +176,7 @@ public class AyuEasyUtils {
         var params = createParams(groupId, isFinalInGroup);
 
         AndroidUtilities.runOnUIThread(() -> {
-            helper.sendMessage(
+            helper.sendMessage(SendMessagesHelper.SendMessageParams.of(
                     photo,
                     path,
                     peer,
@@ -187,10 +189,11 @@ public class AyuEasyUtils {
                     notify,
                     0,
                     0,
+                    0,
                     null,
                     false,
                     false
-            );
+            ));
         });
 
         if (waitToSend) {
@@ -224,7 +227,7 @@ public class AyuEasyUtils {
         var helper = SendMessagesHelper.getInstance(currentAccount);
 
         AndroidUtilities.runOnUIThread(() -> {
-            helper.sendMessage(messages, peer, forwardFromMyName, hideCaption, notify, scheduleDate, replyToTopMsg);
+            helper.sendMessage(messages, peer, forwardFromMyName, hideCaption, notify, scheduleDate, replyToTopMsg, 0, 0L);
         });
 
         waiter.trySetSendingId(dialogId);

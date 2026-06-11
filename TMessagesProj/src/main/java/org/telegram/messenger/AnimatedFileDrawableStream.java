@@ -1,5 +1,8 @@
 package org.telegram.messenger;
 
+import com.google.android.exoplayer2.ExoPlayer;
+import com.google.android.exoplayer2.util.Log;
+
 import org.telegram.tgnet.TLRPC;
 
 import java.util.concurrent.CountDownLatch;
@@ -24,14 +27,14 @@ public class AnimatedFileDrawableStream implements FileLoadOperationStream {
     private int debugCanceledCount;
     private boolean debugReportSend;
 
-    public AnimatedFileDrawableStream(TLRPC.Document d, ImageLocation l, Object p, int a, boolean prev, int loadingPriority) {
+    public AnimatedFileDrawableStream(TLRPC.Document d, ImageLocation l, Object p, int a, boolean prev, int loadingPriority, int cacheType) {
         document = d;
         location = l;
         parentObject = p;
         currentAccount = a;
         preview = prev;
         this.loadingPriority = loadingPriority;
-        loadOperation = FileLoader.getInstance(currentAccount).loadStreamFile(this, document, location, parentObject, 0, preview, loadingPriority);
+        loadOperation = FileLoader.getInstance(currentAccount).loadStreamFile(this, document, location, parentObject, 0, preview, loadingPriority, cacheType);
     }
 
     public boolean isFinishedLoadingFile() {
@@ -48,11 +51,7 @@ public class AnimatedFileDrawableStream implements FileLoadOperationStream {
                 debugCanceledCount++;
                 if (!debugReportSend && debugCanceledCount > 200) {
                     debugReportSend = true;
-                    if (BuildVars.DEBUG_PRIVATE_VERSION) {
-                        throw new RuntimeException("infinity stream reading!!!");
-                    } else {
-                        FileLog.e(new RuntimeException("infinity stream reading!!!"));
-                    }
+                    FileLog.e(new RuntimeException("infinity stream reading!!!"));
                 }
                 return 0;
             }
@@ -104,7 +103,7 @@ public class AnimatedFileDrawableStream implements FileLoadOperationStream {
                 }
                 lastOffset = offset + availableLength;
             } catch (Exception e) {
-                FileLog.e(e);
+                FileLog.e(e, false);
             }
             return (int) availableLength;
         }

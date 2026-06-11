@@ -83,7 +83,9 @@ public class PhotoPickerAlbumsCell extends FrameLayout {
 
         @Override
         public boolean onTouchEvent(MotionEvent event) {
-            selector.drawableHotspotChanged(event.getX(), event.getY());
+            if (Build.VERSION.SDK_INT >= 21) {
+                selector.drawableHotspotChanged(event.getX(), event.getY());
+            }
             return super.onTouchEvent(event);
         }
 

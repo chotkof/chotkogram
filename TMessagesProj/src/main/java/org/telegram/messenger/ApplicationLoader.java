@@ -10,15 +10,14 @@ package org.telegram.messenger;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.app.AlarmManager;
 import android.app.Application;
-import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageInfo;
 import android.content.res.Configuration;
 import android.net.ConnectivityManager;
 import android.net.Network;
@@ -29,31 +28,34 @@ import android.os.Handler;
 import android.os.PowerManager;
 import android.os.SystemClock;
 import android.telephony.TelephonyManager;
-import android.util.Log;
+import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
-import androidx.multidex.MultiDex;
 
-import com.exteragram.messenger.ExteraConfig;
-import com.exteragram.messenger.camera.CameraXUtils;
-import com.exteragram.messenger.utils.CrashlyticsUtils;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.firebase.analytics.FirebaseAnalytics;
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import com.radolyn.ayugram.AyuConfig;
+import com.radolyn.ayugram.AyuFunController;
+import com.radolyn.ayugram.localbots.LocalBotRuntime;
 
-import com.radolyn.ayugram.sync.AyuSyncController;
+import org.json.JSONObject;
 import org.telegram.messenger.voip.VideoCapturerDevice;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.TLRPC;
+import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.Components.ForegroundDetector;
+import org.telegram.ui.Components.ItemOptions;
+import org.telegram.ui.IUpdateLayout;
 import org.telegram.ui.LauncherIconController;
 
 import java.io.File;
+import java.util.Locale;
 
 public class ApplicationLoader extends Application {
-    private static PendingIntent pendingIntent;
 
-    private static ApplicationLoader applicationLoaderInstance;
+    public static ApplicationLoader applicationLoaderInstance;
 
     @SuppressLint("StaticFieldLeak")
     public static volatile Context applicationContext;
@@ -80,12 +82,17 @@ public class ApplicationLoader extends Application {
     private static IMapsProvider mapsProvider;
     private static ILocationServiceProvider locationServiceProvider;
 
+    public static FirebaseAnalytics getFirebaseAnalytics() {
+        return null;
+    }
 
+    public static FirebaseCrashlytics getFirebaseCrashlytics() {
+        return null;
+    }
 
     @Override
     protected void attachBaseContext(Context base) {
         super.attachBaseContext(base);
-        MultiDex.install(this);
     }
 
     public static ILocationServiceProvider getLocationServiceProvider() {
@@ -123,7 +130,43 @@ public class ApplicationLoader extends Application {
     }
 
     public static String getApplicationId() {
-        return BuildConfig.APPLICATION_ID;
+        return applicationLoaderInstance.onGetApplicationId();
+    }
+
+    protected String onGetApplicationId() {
+        return null;
+    }
+
+    public static boolean isHuaweiStoreBuild() {
+        return applicationLoaderInstance.isHuaweiBuild();
+    }
+
+    public static boolean isStandaloneBuild() {
+        return applicationLoaderInstance.isStandalone();
+    }
+
+    public static boolean isBetaBuild() {
+        return applicationLoaderInstance.isBeta();
+    }
+
+    public static boolean isAndroidTestEnvironment() {
+        return applicationLoaderInstance.isAndroidTestEnv();
+    }
+
+    protected boolean isHuaweiBuild() {
+        return false;
+    }
+
+    protected boolean isStandalone() {
+        return false;
+    }
+
+    protected boolean isBeta() {
+        return false;
+    }
+
+    protected boolean isAndroidTestEnv() {
+        return false;
     }
 
     public static File getFilesDirFixed() {
@@ -141,7 +184,20 @@ public class ApplicationLoader extends Application {
         } catch (Exception e) {
             FileLog.e(e);
         }
-        return new File("/data/data/com.radolyn.ayugram/files");
+        return new File("/data/data/org.telegram.messenger/files");
+    }
+
+    public static File getFilesDirFixed(String child) {
+        try {
+            File path = getFilesDirFixed();
+            File dir = new File(path, child);
+            dir.mkdirs();
+
+            return dir;
+        } catch (Exception e) {
+            FileLog.e(e);
+        }
+        return null;
     }
 
     public static void postInitApplication() {
@@ -149,6 +205,7 @@ public class ApplicationLoader extends Application {
             return;
         }
         applicationInited = true;
+        NativeLoader.initNativeLibs(ApplicationLoader.applicationContext);
 
         try {
             LocaleController.getInstance(); //TODO improve
@@ -200,7 +257,6 @@ public class ApplicationLoader extends Application {
         }
 
         SharedConfig.loadConfig();
-        CameraXUtils.loadCameraXSizes();
         SharedPrefsHelper.init(applicationContext);
         for (int a = 0; a < UserConfig.MAX_ACCOUNT_COUNT; a++) { //TODO improve account
             UserConfig.getInstance(a).loadConfig();
@@ -223,16 +279,14 @@ public class ApplicationLoader extends Application {
             FileLog.d("app initied");
         }
 
+        AyuFunController.init();
+        LocalBotRuntime.init();
         MediaController.getInstance();
         for (int a = 0; a < UserConfig.MAX_ACCOUNT_COUNT; a++) { //TODO improve account
             ContactsController.getInstance(a).checkAppAccount();
             DownloadController.getInstance(a);
         }
-        ChatThemeController.init();
         BillingController.getInstance().startConnection();
-
-        // AyuGram: start sync
-        AyuSyncController.create();
     }
 
     public ApplicationLoader() {
@@ -252,7 +306,28 @@ public class ApplicationLoader extends Application {
 
         if (BuildVars.LOGS_ENABLED) {
             FileLog.d("app start time = " + (startTime = SystemClock.elapsedRealtime()));
-            FileLog.d("buildVersion = " + BuildVars.BUILD_VERSION);
+            try {
+                final PackageInfo info = ApplicationLoader.applicationContext.getPackageManager().getPackageInfo(ApplicationLoader.applicationContext.getPackageName(), 0);
+                final String abi;
+                switch (info.versionCode % 10) {
+                    case 1:
+                    case 2:
+                        abi = "store bundled " + Build.CPU_ABI + " " + Build.CPU_ABI2;
+                        break;
+                    default:
+                    case 9:
+                        if (ApplicationLoader.isStandaloneBuild()) {
+                            abi = "direct " + Build.CPU_ABI + " " + Build.CPU_ABI2;
+                        } else {
+                            abi = "universal " + Build.CPU_ABI + " " + Build.CPU_ABI2;
+                        }
+                        break;
+                }
+                FileLog.d("buildVersion = " + String.format(Locale.US, "v%s (%d[%d]) %s", info.versionName, info.versionCode / 10, info.versionCode % 10, abi));
+            } catch (Exception e) {
+                FileLog.e(e);
+            }
+            FileLog.d("device = manufacturer=" + Build.MANUFACTURER + ", device=" + Build.DEVICE + ", model=" + Build.MODEL + ", product=" + Build.PRODUCT);
         }
         if (applicationContext == null) {
             applicationContext = getApplicationContext();
@@ -278,70 +353,30 @@ public class ApplicationLoader extends Application {
             FileLog.d("load libs time = " + (SystemClock.elapsedRealtime() - startTime));
         }
 
-        if (BuildVars.DEBUG_VERSION) {
-            var oldDefaultUncaughtExceptionHandler = Thread.getDefaultUncaughtExceptionHandler();
-            Thread.setDefaultUncaughtExceptionHandler((t, e) -> {
-                try {
-                    android.content.ClipboardManager clipboard = (android.content.ClipboardManager) ApplicationLoader.applicationContext.getSystemService(Context.CLIPBOARD_SERVICE);
-                    android.content.ClipData clip = android.content.ClipData.newPlainText("label", Log.getStackTraceString(e));
-                    clipboard.setPrimaryClip(clip);
-                } catch (Exception ex) {
-                    FileLog.e(ex);
-                }
-                FileLog.e(Log.getStackTraceString(e));
-                if (oldDefaultUncaughtExceptionHandler != null) {
-                    oldDefaultUncaughtExceptionHandler.uncaughtException(t, e);
-                }
-            });
-        }
-
         applicationHandler = new Handler(applicationContext.getMainLooper());
 
         AndroidUtilities.runOnUIThread(ApplicationLoader::startPushService);
 
         LauncherIconController.tryFixLauncherIconIfNeeded();
         ProxyRotationController.init();
-
-        ApplicationLoader app = (ApplicationLoader) ApplicationLoader.applicationContext;
-        app.initFirebase();
     }
 
     public static void startPushService() {
         SharedPreferences preferences = MessagesController.getGlobalNotificationsSettings();
         boolean enabled;
         if (preferences.contains("pushService")) {
-            enabled = preferences.getBoolean("pushService", true);
+            enabled = preferences.getBoolean("pushService", true) || AyuConfig.keepAliveService;
         } else {
-            enabled = MessagesController.getMainSettings(UserConfig.selectedAccount).getBoolean("keepAliveService", false);
+            enabled = AyuConfig.keepAliveService || MessagesController.getMainSettings(UserConfig.selectedAccount).getBoolean("keepAliveService", false);
         }
         if (enabled) {
-            if (AyuConfig.keepAliveService) {
-                Log.d("TFOSS", "Trying to start push service every minute");
-                AlarmManager am = (AlarmManager) applicationContext.getSystemService(Context.ALARM_SERVICE);
-                Intent i = new Intent(applicationContext, NotificationsService.class);
-                pendingIntent = PendingIntent.getBroadcast(applicationContext, 0, i, PendingIntent.FLAG_MUTABLE);
-
-                am.cancel(pendingIntent);
-                am.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), 60000, pendingIntent);
-            }
-
             try {
-                Log.d("TFOSS", "Starting push service...");
                 applicationContext.startService(new Intent(applicationContext, NotificationsService.class));
             } catch (Throwable ignore) {
-                Log.d("TFOSS", "Failed to start push service");
+
             }
         } else {
             applicationContext.stopService(new Intent(applicationContext, NotificationsService.class));
-
-            if (AyuConfig.keepAliveService) {
-                PendingIntent pintent = PendingIntent.getService(applicationContext, 0, new Intent(applicationContext, NotificationsService.class), PendingIntent.FLAG_MUTABLE);
-                AlarmManager alarm = (AlarmManager) applicationContext.getSystemService(Context.ALARM_SERVICE);
-                alarm.cancel(pintent);
-                if (pendingIntent != null) {
-                    alarm.cancel(pendingIntent);
-                }
-            }
         }
     }
 
@@ -358,27 +393,6 @@ public class ApplicationLoader extends Application {
         }
     }
 
-    private static FirebaseAnalytics firebaseAnalytics;
-    private static FirebaseCrashlytics firebaseCrashlytics;
-
-    private void initFirebase() {
-        AndroidUtilities.runOnUIThread(() -> {
-            firebaseAnalytics = FirebaseAnalytics.getInstance(this);
-            firebaseCrashlytics = FirebaseCrashlytics.getInstance();
-            firebaseAnalytics.setAnalyticsCollectionEnabled(ExteraConfig.useGoogleAnalytics);
-            firebaseCrashlytics.setCrashlyticsCollectionEnabled(ExteraConfig.useGoogleCrashlytics);
-            CrashlyticsUtils.logEvents(applicationContext);
-        });
-    }
-
-    public static FirebaseAnalytics getFirebaseAnalytics() {
-        return firebaseAnalytics;
-    }
-
-    public static FirebaseCrashlytics getFirebaseCrashlytics() {
-        return firebaseCrashlytics;
-    }
-
     private void initPushServices() {
         AndroidUtilities.runOnUIThread(() -> {
             if (getPushProvider().hasServices()) {
@@ -391,6 +405,23 @@ public class ApplicationLoader extends Application {
                 PushListenerController.sendRegistrationToServer(getPushProvider().getPushType(), null);
             }
         }, 1000);
+    }
+
+    private boolean checkPlayServices() {
+        try {
+            int resultCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable(this);
+            return resultCode == ConnectionResult.SUCCESS;
+        } catch (Exception e) {
+            FileLog.e(e);
+        }
+        return true;
+    }
+
+    private static long lastNetworkCheck = -1;
+    private static void ensureCurrentNetworkGet() {
+        final long now = System.currentTimeMillis();
+        ensureCurrentNetworkGet(now - lastNetworkCheck > 5000);
+        lastNetworkCheck = now;
     }
 
     private static void ensureCurrentNetworkGet(boolean force) {
@@ -575,5 +606,116 @@ public class ApplicationLoader extends Application {
             }
         }
         return result;
+    }
+
+    public static void startAppCenter(Activity context) {
+        applicationLoaderInstance.startAppCenterInternal(context);
+    }
+
+    public static void checkForUpdates() {
+        applicationLoaderInstance.checkForUpdatesInternal();
+    }
+
+    public static void appCenterLog(Throwable e) {
+        applicationLoaderInstance.appCenterLogInternal(e);
+    }
+
+    protected void appCenterLogInternal(Throwable e) {
+
+    }
+
+    protected void checkForUpdatesInternal() {
+
+    }
+
+    protected void startAppCenterInternal(Activity context) {
+
+    }
+
+    public static void logDualCamera(boolean success, boolean vendor) {
+        applicationLoaderInstance.logDualCameraInternal(success, vendor);
+    }
+
+    protected void logDualCameraInternal(boolean success, boolean vendor) {
+
+    }
+
+    public boolean checkApkInstallPermissions(final Context context) {
+        return false;
+    }
+
+    public boolean openApkInstall(Activity activity, TLRPC.Document document) {
+        return false;
+    }
+
+    public boolean showUpdateAppPopup(Context context, TLRPC.TL_help_appUpdate update, int account) {
+        return false;
+    }
+
+    public boolean showCustomUpdateAppPopup(Context context, BetaUpdate update, int account) {
+        return false;
+    }
+
+    public IUpdateLayout takeUpdateLayout(Activity activity, ViewGroup sideMenuContainer) {
+        return null;
+    }
+
+    public TLRPC.Update parseTLUpdate(int constructor) {
+        return null;
+    }
+
+    public void processUpdate(int currentAccount, TLRPC.Update update) {
+
+    }
+
+    public boolean onSuggestionFill(String suggestion, CharSequence[] output, boolean[] closeable) {
+        return false;
+    }
+
+    public boolean onSuggestionClick(String suggestion) {
+        return false;
+    }
+
+    public void addItemOptions(ItemOptions itemOptions) {
+
+    }
+
+    public boolean checkRequestPermissionResult(int requestCode, String[] permissions, int[] grantResults) {
+        return false;
+    }
+
+    public boolean consumePush(int account, JSONObject json) {
+        return false;
+    }
+
+    public void onResume() {
+
+    }
+
+    public boolean onPause() {
+        return false;
+    }
+
+    public BaseFragment openSettings(int n) {
+        return null;
+    }
+
+    public boolean isCustomUpdate() {
+        return false;
+    }
+    public void downloadUpdate() {}
+    public void cancelDownloadingUpdate() {}
+    public boolean isDownloadingUpdate() {
+        return false;
+    }
+    public float getDownloadingUpdateProgress() {
+        return 0.0f;
+    }
+    public void checkUpdate(boolean force, Runnable whenDone) {}
+    public BetaUpdate getUpdate() {
+        return null;
+    }
+    public File getDownloadedUpdateFile() {
+        return null;
     }
 }

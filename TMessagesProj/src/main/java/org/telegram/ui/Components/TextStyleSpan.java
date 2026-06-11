@@ -13,8 +13,6 @@ import android.graphics.Typeface;
 import android.text.TextPaint;
 import android.text.style.MetricAffectingSpan;
 
-import com.exteragram.messenger.utils.FontUtils;
-
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.Theme;
@@ -31,6 +29,7 @@ public class TextStyleSpan extends MetricAffectingSpan {
         public int start;
         public int end;
         public TLRPC.MessageEntity urlEntity;
+        public String lng;
 
         public TextStyleRun() {
 
@@ -65,34 +64,31 @@ public class TextStyleSpan extends MetricAffectingSpan {
             } else {
                 p.setFlags(p.getFlags() &~ Paint.UNDERLINE_TEXT_FLAG);
             }
-            if ((flags & FLAG_STYLE_STRIKE) != 0) {
+            if ((flags & FLAG_STYLE_STRIKE) != 0 || (flags & FLAG_STYLE_STRIKE_RED) != 0) {
                 p.setFlags(p.getFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
             } else {
                 p.setFlags(p.getFlags() &~ Paint.STRIKE_THRU_TEXT_FLAG);
             }
 
-            if ((flags & FLAG_STYLE_BOLD) != 0 && !FontUtils.isMediumWeightSupported()) {
-                p.setStrokeWidth(0.65f);
-                p.setStyle(Paint.Style.FILL_AND_STROKE);
-            }
-            if ((flags & FLAG_STYLE_ITALIC) != 0 && !FontUtils.isItalicSupported()) {
-                p.setTextSkewX(-0.25f);
-            }
-
             if ((flags & FLAG_STYLE_SPOILER_REVEALED) != 0) {
                 p.bgColor = Theme.getColor(Theme.key_chats_archivePullDownBackground);
+            }
+            if ((flags & FLAG_STYLE_STRIKE_RED) != 0) {
+                p.setColor(Theme.getColor(Theme.key_text_RedBold));
+            } else if ((flags & FLAG_STYLE_ACCENT) != 0) {
+                p.setColor(Theme.getColor(Theme.key_featuredStickers_addButton));
             }
         }
 
         public Typeface getTypeface() {
-            if ((flags & FLAG_STYLE_MONO) != 0 || (flags & FLAG_STYLE_QUOTE) != 0) {
+            if ((flags & FLAG_STYLE_MONO) != 0 || (flags & FLAG_STYLE_CODE) != 0) {
                 return Typeface.MONOSPACE;
-            } else if ((flags & FLAG_STYLE_BOLD) != 0 && (flags & FLAG_STYLE_ITALIC) != 0 && FontUtils.isMediumWeightSupported() && FontUtils.isItalicSupported()) {
-                return AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_MEDIUM_ITALIC);
-            } else if ((flags & FLAG_STYLE_BOLD) != 0 && FontUtils.isMediumWeightSupported()) {
-                return AndroidUtilities.getTypeface("fonts/rmedium.ttf");
-            } else if ((flags & FLAG_STYLE_ITALIC) != 0 && FontUtils.isItalicSupported()) {
-                return AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_ITALIC);
+            } else if ((flags & FLAG_STYLE_BOLD) != 0 && (flags & FLAG_STYLE_ITALIC) != 0) {
+                return AndroidUtilities.getTypeface("fonts/rmediumitalic.ttf");
+            } else if ((flags & FLAG_STYLE_BOLD) != 0) {
+                return AndroidUtilities.bold();
+            } else if ((flags & FLAG_STYLE_ITALIC) != 0) {
+                return AndroidUtilities.getTypeface("fonts/ritalic.ttf");
             } else {
                 return null;
             }
@@ -110,7 +106,9 @@ public class TextStyleSpan extends MetricAffectingSpan {
     public final static int FLAG_STYLE_SPOILER = 256;
     public final static int FLAG_STYLE_SPOILER_REVEALED = 512;
     public final static int FLAG_STYLE_TEXT_URL = 1024;
-
+    public final static int FLAG_STYLE_CODE = 2048;
+    public final static int FLAG_STYLE_ACCENT = 4096;
+    public final static int FLAG_STYLE_STRIKE_RED = 8192;
 
     public TextStyleSpan(TextStyleRun run) {
         this(run, 0, 0);
@@ -163,15 +161,15 @@ public class TextStyleSpan extends MetricAffectingSpan {
     }
 
     public boolean isBold() {
-        return style.getTypeface() == AndroidUtilities.getTypeface("fonts/rmedium.ttf");
+        return style.getTypeface() == AndroidUtilities.bold();
     }
 
     public boolean isItalic() {
-        return style.getTypeface() == AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_ITALIC);
+        return style.getTypeface() == AndroidUtilities.getTypeface("fonts/ritalic.ttf");
     }
 
     public boolean isBoldItalic() {
-        return style.getTypeface() == AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_MEDIUM_ITALIC);
+        return style.getTypeface() == AndroidUtilities.getTypeface("fonts/rmediumitalic.ttf");
     }
 
     @Override

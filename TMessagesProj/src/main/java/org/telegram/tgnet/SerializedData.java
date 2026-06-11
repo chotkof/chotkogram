@@ -17,7 +17,6 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.nio.charset.StandardCharsets;
 
 public class SerializedData extends AbstractSerializedData {
     protected boolean isOut = true;
@@ -432,6 +431,11 @@ public class SerializedData extends AbstractSerializedData {
                 len += 3;
                 sl = 4;
             }
+
+            if (l > remaining() || l < 0) {
+                throw new RuntimeException("string size too big");
+            }
+
             byte[] b = new byte[l];
             in.read(b);
             len++;
@@ -441,7 +445,7 @@ public class SerializedData extends AbstractSerializedData {
                 len++;
                 i++;
             }
-            return new String(b, StandardCharsets.UTF_8);
+            return new String(b, "UTF-8");
         } catch (Exception e) {
             if (exception) {
                 throw new RuntimeException("read string error", e);
@@ -465,6 +469,11 @@ public class SerializedData extends AbstractSerializedData {
                 len += 3;
                 sl = 4;
             }
+
+            if (l > remaining() || l < 0) {
+                throw new RuntimeException("byte array size too big");
+            }
+
             byte[] b = new byte[l];
             in.read(b);
             len++;

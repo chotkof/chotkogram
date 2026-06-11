@@ -50,6 +50,7 @@ import org.telegram.messenger.SharedConfig;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.INavigationLayout;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.BlurSettingsBottomSheet;
 import org.telegram.ui.Cells.HeaderCell;
 import org.telegram.ui.Components.AnimationProperties;
 import org.telegram.ui.Components.CombinedDrawable;
@@ -77,7 +78,9 @@ public class FloatingDebugView extends FrameLayout implements NotificationCenter
     private boolean inLongPress;
     private Runnable onLongPress = () -> {
         inLongPress = true;
-        performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+        try {
+            performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+        } catch (Exception ignored) {}
     };
 
     private boolean isBigMenuShown;
@@ -214,7 +217,7 @@ public class FloatingDebugView extends FrameLayout implements NotificationCenter
         titleView = new TextView(context);
         titleView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 20);
         titleView.setText(LocaleController.getString(R.string.DebugMenu));
-        titleView.setTypeface(AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_MEDIUM));
+        titleView.setTypeface(AndroidUtilities.bold());
         titleView.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(19), AndroidUtilities.dp(24), AndroidUtilities.dp(19));
         bigLayout.addView(titleView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
@@ -312,12 +315,12 @@ public class FloatingDebugView extends FrameLayout implements NotificationCenter
         return super.drawChild(canvas, child, drawingTime);
     }
 
-    public boolean onBackPressed() {
+    public boolean onBackPressed(boolean invoked) {
         if (isBigMenuShown) {
-            showBigMenu(false);
-            return true;
+            if (invoked) showBigMenu(false);
+            return false;
         }
-        return false;
+        return true;
     }
 
     @SuppressLint("ApplySharedPref")
@@ -325,7 +328,7 @@ public class FloatingDebugView extends FrameLayout implements NotificationCenter
         mPrefs.edit()
                 .putFloat("x", fabXSpring.getSpring().getFinalPosition())
                 .putFloat("y", fabYSpring.getSpring().getFinalPosition())
-                .apply();
+                .commit();
     }
 
     private void updateDrawables() {
@@ -483,6 +486,18 @@ public class FloatingDebugView extends FrameLayout implements NotificationCenter
 
     private List<FloatingDebugController.DebugItem> getBuiltInDebugItems() {
         List<FloatingDebugController.DebugItem> items = new ArrayList<>();
+
+        items.add(new FloatingDebugController.DebugItem("Theme"));
+        items.add(new FloatingDebugController.DebugItem("Draw action bar shadow", () -> {
+            SharedConfig.drawActionBarShadow = !SharedConfig.drawActionBarShadow;
+            SharedConfig.saveDebugConfig();
+            AndroidUtilities.forEachViews(LaunchActivity.instance.drawerLayoutContainer.getRootView(), View::invalidate);
+        }));
+        items.add(new FloatingDebugController.DebugItem("Show blur settings", () -> {
+            BlurSettingsBottomSheet.show(LaunchActivity.getLastFragment());
+            showBigMenu(false);
+        }));
+
         items.add(new FloatingDebugController.DebugItem(LocaleController.getString(R.string.DebugGeneral)));
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             items.add(new FloatingDebugController.DebugItem(LocaleController.getString(SharedConfig.debugWebView ? R.string.DebugMenuDisableWebViewDebug : R.string.DebugMenuEnableWebViewDebug), ()->{

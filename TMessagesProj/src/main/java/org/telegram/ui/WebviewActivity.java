@@ -136,6 +136,7 @@ public class WebviewActivity extends BaseFragment {
     @Override
     public void onFragmentDestroy() {
         super.onFragmentDestroy();
+        AndroidUtilities.checkAndroidTheme(getContext(), false);
         AndroidUtilities.cancelRunOnUIThread(typingRunnable);
         webView.setLayerType(View.LAYER_TYPE_NONE, null);
         typingRunnable = null;
@@ -178,7 +179,7 @@ public class WebviewActivity extends BaseFragment {
         progressItem = menu.addItemWithWidth(share, R.drawable.share, AndroidUtilities.dp(54));
         if (type == TYPE_GAME) {
             ActionBarMenuItem menuItem = menu.addItem(0, R.drawable.ic_ab_other);
-            menuItem.addSubItem(open_in, R.drawable.msg_openin, LocaleController.getString("OpenInExternalApp", R.string.OpenInExternalApp));
+            menuItem.addSubItem(open_in, R.drawable.msg_openin, LocaleController.getString(R.string.OpenInExternalApp));
 
             actionBar.setTitle(currentGame);
             actionBar.setSubtitle("@" + currentBot);
@@ -192,10 +193,11 @@ public class WebviewActivity extends BaseFragment {
         } else if (type == TYPE_STAT) {
             actionBar.setBackgroundColor(Theme.getColor(Theme.key_dialogBackground));
             actionBar.setItemsColor(Theme.getColor(Theme.key_player_actionBarItems), false);
+            actionBar.setItemsColor(Theme.getColor(Theme.key_player_actionBarItems), true);
             actionBar.setItemsBackgroundColor(Theme.getColor(Theme.key_player_actionBarSelector), false);
             actionBar.setTitleColor(Theme.getColor(Theme.key_player_actionBarTitle));
             actionBar.setSubtitleColor(Theme.getColor(Theme.key_player_actionBarSubtitle));
-            actionBar.setTitle(LocaleController.getString("Statistics", R.string.Statistics));
+            actionBar.setTitle(LocaleController.getString(R.string.Statistics));
 
             progressView = new ContextProgressView(context, 3);
             progressItem.addView(progressView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
@@ -207,19 +209,29 @@ public class WebviewActivity extends BaseFragment {
             progressItem.setEnabled(false);
         }
 
+        AndroidUtilities.checkAndroidTheme(context, true);
         webView = new WebView(context);
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setDomStorageEnabled(true);
 
         fragmentView = new FrameLayout(context);
         FrameLayout frameLayout = (FrameLayout) fragmentView;
-        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        if (Build.VERSION.SDK_INT >= 19) {
+            webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+            webView.getSettings().setLayoutAlgorithm(WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING);
+        }
 
-        webView.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-        CookieManager cookieManager = CookieManager.getInstance();
-        cookieManager.setAcceptThirdPartyCookies(webView, true);
-        if (type == TYPE_GAME) {
-            webView.addJavascriptInterface(new TelegramWebviewProxy(), "TelegramWebviewProxy");
+        if (Build.VERSION.SDK_INT >= 17) {
+            webView.getSettings().setMediaPlaybackRequiresUserGesture(false);
+        }
+
+        if (Build.VERSION.SDK_INT >= 21) {
+            webView.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+            CookieManager cookieManager = CookieManager.getInstance();
+            cookieManager.setAcceptThirdPartyCookies(webView, true);
+            if (type == TYPE_GAME) {
+                webView.addJavascriptInterface(new TelegramWebviewProxy(), "TelegramWebviewProxy");
+            }
         }
 
         webView.setWebViewClient(new WebViewClient() {
@@ -392,7 +404,7 @@ public class WebviewActivity extends BaseFragment {
             messageObject.messageOwner.serializeToStream(serializedData);
             editor.putString(hash + "_m", Utilities.bytesToHex(serializedData.toByteArray()));
             editor.putString(hash + "_link", "https://" + MessagesController.getInstance(messageObject.currentAccount).linkPrefix + "/" + username + (TextUtils.isEmpty(short_name) ? "" : "?game=" + short_name));
-            editor.apply();
+            editor.commit();
             Browser.openUrl(parentActivity, url, false);
             serializedData.cleanup();
         } catch (Exception e) {

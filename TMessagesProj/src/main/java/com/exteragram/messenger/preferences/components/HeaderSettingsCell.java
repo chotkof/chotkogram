@@ -48,7 +48,7 @@ public class HeaderSettingsCell extends FrameLayout {
             color = MonetUtils.getColor(theme.isDark() ? "n1_800" : "a1_100");
             arrow.setColorFilter(new PorterDuffColorFilter(MonetUtils.getColor(theme.isDark() ? "a1_100" : "n2_700"), PorterDuff.Mode.MULTIPLY));
         } else {
-            // AyuGram: removed
+            // ChotkoGram: removed
             // arrow.setAlpha((int) (70 * 2.55f));
         }
 

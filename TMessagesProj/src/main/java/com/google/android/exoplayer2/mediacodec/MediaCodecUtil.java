@@ -162,9 +162,12 @@ public final class MediaCodecUtil {
     if (cachedDecoderInfos != null) {
       return cachedDecoderInfos;
     }
-    MediaCodecListCompat mediaCodecList = new MediaCodecListCompatV21(secure, tunneling);
+    MediaCodecListCompat mediaCodecList =
+        Util.SDK_INT >= 21
+            ? new MediaCodecListCompatV21(secure, tunneling)
+            : new MediaCodecListCompatV16();
     ArrayList<MediaCodecInfo> decoderInfos = getDecoderInfosInternal(key, mediaCodecList);
-    if (secure && decoderInfos.isEmpty() && Util.SDK_INT <= 23) {
+    if (secure && decoderInfos.isEmpty() && 21 <= Util.SDK_INT && Util.SDK_INT <= 23) {
       // Some devices don't list secure decoders on API level 21 [Internal: b/18678462]. Try the
       // legacy path. We also try this path on API levels 22 and 23 as a defensive measure.
       mediaCodecList = new MediaCodecListCompatV16();
@@ -214,7 +217,7 @@ public final class MediaCodecUtil {
         }
         // We assume support for at least 480p (SDK_INT >= 21) or 360p (SDK_INT < 21), which are
         // the levels mandated by the Android CDD.
-        result = max(result, 720 * 480);
+        result = max(result, Util.SDK_INT >= 21 ? (720 * 480) : (480 * 360));
       }
       maxH264DecodableFrameSize = result;
     }
@@ -456,6 +459,26 @@ public final class MediaCodecUtil {
       return false;
     }
 
+    // Work around broken audio decoders.
+    if (Util.SDK_INT < 21
+        && ("CIPAACDecoder".equals(name)
+            || "CIPMP3Decoder".equals(name)
+            || "CIPVorbisDecoder".equals(name)
+            || "CIPAMRNBDecoder".equals(name)
+            || "AACDecoder".equals(name)
+            || "MP3Decoder".equals(name))) {
+      return false;
+    }
+
+    // Work around https://github.com/google/ExoPlayer/issues/1528 and
+    // https://github.com/google/ExoPlayer/issues/3171.
+    if (Util.SDK_INT < 18
+        && "OMX.MTK.AUDIO.DECODER.AAC".equals(name)
+        && ("a70".equals(Util.DEVICE)
+            || ("Xiaomi".equals(Util.MANUFACTURER) && Util.DEVICE.startsWith("HM")))) {
+      return false;
+    }
+
     // Work around an issue where querying/creating a particular MP3 decoder on some devices on
     // platform API version 16 fails.
     if (Util.SDK_INT == 16
@@ -611,7 +634,7 @@ public final class MediaCodecUtil {
    * The result of {@link android.media.MediaCodecInfo#isHardwareAccelerated()} for API levels 29+,
    * or a best-effort approximation for lower levels.
    */
-  private static boolean isHardwareAccelerated(
+  public static boolean isHardwareAccelerated(
       android.media.MediaCodecInfo codecInfo, String mimeType) {
     if (Util.SDK_INT >= 29) {
       return isHardwareAcceleratedV29(codecInfo);
@@ -956,6 +979,7 @@ public final class MediaCodecUtil {
     boolean isFeatureRequired(String feature, String mimeType, CodecCapabilities capabilities);
   }
 
+  @RequiresApi(21)
   private static final class MediaCodecListCompatV21 implements MediaCodecListCompat {
 
     private final int codecKind;

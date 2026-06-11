@@ -183,22 +183,22 @@ public class ExteraConfig {
             hideAllChats = preferences.getBoolean("hideAllChats", false);
             centerTitle = preferences.getBoolean("centerTitle", false);
             tabCounter = preferences.getBoolean("tabCounter", true);
-            tabIcons = preferences.getInt("tabIcons", 1);
-            tabStyle = preferences.getInt("tabStyle", 4);
-            titleText = preferences.getInt("titleText", 2);
+            tabIcons = preferences.getInt("tabIcons", 0);
+            tabStyle = preferences.getInt("tabStyle", 0);
+            titleText = preferences.getInt("titleText", 0);
 
-            useSolarIcons = preferences.getBoolean("useSolarIcons", true);
+            useSolarIcons = preferences.getBoolean("useSolarIcons", false);
 
-            squareFab = preferences.getBoolean("squareFab", true);
-            forceBlur = preferences.getBoolean("forceBlur", true);
+            squareFab = preferences.getBoolean("squareFab", false);
+            forceBlur = preferences.getBoolean("forceBlur", false);
             forceSnow = preferences.getBoolean("forceSnow", false);
             useSystemFonts = preferences.getBoolean("useSystemFonts", true);
-            newSwitchStyle = preferences.getBoolean("newSwitchStyle", true);
+            newSwitchStyle = preferences.getBoolean("newSwitchStyle", false);
             disableDividers = preferences.getBoolean("disableDividers", false);
             useLNavigation = preferences.getBoolean("useLNavigation", false);
 
-            eventType = preferences.getInt("eventType", 0);
-            alternativeOpenAnimation = preferences.getBoolean("alternativeOpenAnimation", true);
+            eventType = preferences.getInt("eventType", 1);
+            alternativeOpenAnimation = preferences.getBoolean("alternativeOpenAnimation", false);
 
             changeStatus = preferences.getBoolean("changeStatus", true);
             newGroup = preferences.getBoolean("newGroup", true);

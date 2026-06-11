@@ -1,5 +1,5 @@
 /*
- * This is the source code of AyuGram for Android.
+ * This is the source code of ChotkoGram for Android.
  *
  * We do not and cannot prevent the use of our code,
  * but be respectful and credit the original author.
@@ -23,13 +23,18 @@ import com.radolyn.ayugram.database.entities.DeletedMessageReaction;
 import com.radolyn.ayugram.database.entities.EditedMessage;
 import com.radolyn.ayugram.proprietary.AyuMessageUtils;
 import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.MessageObject;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.tgnet.TLRPC;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class AyuMessagesController {
     public static final String attachmentsSubfolder = "Saved Attachments";
@@ -39,6 +44,9 @@ public class AyuMessagesController {
             attachmentsSubfolder
     );
     private static AyuMessagesController instance;
+    private static final Object recentMessagesLock = new Object();
+    private static final int MAX_RECENT_MESSAGES = 2000;
+    private static final LinkedHashMap<String, AyuSavePreferences> recentMessages = new LinkedHashMap<>();
     private final EditedMessageDao editedMessageDao;
     private final DeletedMessageDao deletedMessageDao;
 
@@ -67,11 +75,87 @@ public class AyuMessagesController {
         return instance;
     }
 
+    public static void rememberMessages(int accountId, long dialogId, ArrayList<MessageObject> messages) {
+        if (messages == null || messages.isEmpty()) {
+            return;
+        }
+        for (int i = 0; i < messages.size(); i++) {
+            MessageObject messageObject = messages.get(i);
+            if (messageObject == null || messageObject.messageOwner == null) {
+                continue;
+            }
+            long did = dialogId != 0 ? dialogId : messageObject.getDialogId();
+            int topicId = (int) MessageObject.getTopicId(accountId, messageObject.messageOwner, false);
+            rememberMessage(new AyuSavePreferences(messageObject.messageOwner, accountId, did, topicId, messageObject.getId(), (int) (System.currentTimeMillis() / 1000)));
+        }
+    }
+
+    public static void rememberMessage(AyuSavePreferences prefs) {
+        if (prefs == null || prefs.getMessage() == null || prefs.getDialogId() == 0 || prefs.getMessageId() == 0) {
+            return;
+        }
+        synchronized (recentMessagesLock) {
+            recentMessages.put(cacheKey(prefs.getAccountId(), prefs.getDialogId(), prefs.getMessageId()), prefs);
+            while (recentMessages.size() > MAX_RECENT_MESSAGES) {
+                Iterator<String> iterator = recentMessages.keySet().iterator();
+                if (!iterator.hasNext()) {
+                    break;
+                }
+                iterator.next();
+                iterator.remove();
+            }
+        }
+    }
+
+    public Map<Long, ArrayList<Integer>> saveCachedDeletedMessages(int accountId, long dialogId, ArrayList<Integer> messageIds, int requestCatchTime) {
+        Map<Long, ArrayList<Integer>> savedMessages = new LinkedHashMap<>();
+        if (messageIds == null || messageIds.isEmpty()) {
+            return savedMessages;
+        }
+        ArrayList<AyuSavePreferences> toSave = new ArrayList<>();
+        synchronized (recentMessagesLock) {
+            for (int i = 0; i < messageIds.size(); i++) {
+                int messageId = messageIds.get(i);
+                if (dialogId != 0) {
+                    AyuSavePreferences prefs = recentMessages.get(cacheKey(accountId, dialogId, messageId));
+                    if (prefs != null) {
+                        toSave.add(prefs);
+                    }
+                } else {
+                    for (Map.Entry<String, AyuSavePreferences> entry : recentMessages.entrySet()) {
+                        AyuSavePreferences prefs = entry.getValue();
+                        if (prefs.getAccountId() == accountId && prefs.getMessageId() == messageId) {
+                            toSave.add(prefs);
+                        }
+                    }
+                }
+            }
+        }
+        for (int i = 0; i < toSave.size(); i++) {
+            AyuSavePreferences prefs = toSave.get(i);
+            AyuSavePreferences freshPrefs = new AyuSavePreferences(prefs.getMessage(), accountId, prefs.getDialogId(), prefs.getTopicId(), prefs.getMessageId(), requestCatchTime);
+            onMessageDeleted(freshPrefs);
+            ArrayList<Integer> ids = savedMessages.get(freshPrefs.getDialogId());
+            if (ids == null) {
+                ids = new ArrayList<>();
+                savedMessages.put(freshPrefs.getDialogId(), ids);
+            }
+            if (!ids.contains(freshPrefs.getMessageId())) {
+                ids.add(freshPrefs.getMessageId());
+            }
+        }
+        return savedMessages;
+    }
+
+    private static String cacheKey(int accountId, long dialogId, int messageId) {
+        return accountId + ":" + dialogId + ":" + messageId;
+    }
+
     public void onMessageEdited(AyuSavePreferences prefs, TLRPC.Message newMessage) {
         try {
             onMessageEditedInner(prefs, newMessage, false);
         } catch (Exception e) {
-            Log.e("AyuGram", "error onMessageEdited", e);
+            Log.e("ChotkoGram", "error onMessageEdited", e);
             FileLog.e("onMessageEdited", e);
         }
     }
@@ -80,7 +164,7 @@ public class AyuMessagesController {
         try {
             onMessageEditedInner(prefs, prefs.getMessage(), true);
         } catch (Exception e) {
-            Log.e("AyuGram", "error onMessageEditedForce", e);
+            Log.e("ChotkoGram", "error onMessageEditedForce", e);
             FileLog.e("onMessageEditedForce", e);
         }
     }
@@ -131,14 +215,14 @@ public class AyuMessagesController {
 
     public void onMessageDeleted(AyuSavePreferences prefs) {
         if (prefs.getMessage() == null) {
-            Log.w("AyuGram", "null msg ?");
+            Log.w("ChotkoGram", "null msg ?");
             return;
         }
 
         try {
             onMessageDeletedInner(prefs);
         } catch (Exception e) {
-            Log.e("AyuGram", "error onMessageDeleted", e);
+            Log.e("ChotkoGram", "error onMessageDeleted", e);
             FileLog.e("onMessageDeleted", e);
         }
     }
@@ -160,7 +244,7 @@ public class AyuMessagesController {
 
         var msg = prefs.getMessage();
 
-        Log.d("AyuGram", "saving message " + prefs.getMessageId() + " for " + prefs.getDialogId() + " with topic " + prefs.getTopicId());
+        Log.d("ChotkoGram", "saving message " + prefs.getMessageId() + " for " + prefs.getDialogId() + " with topic " + prefs.getTopicId());
 
         AyuMessageUtils.map(prefs, deletedMessage);
         AyuMessageUtils.mapMedia(prefs, deletedMessage, true);
@@ -189,7 +273,7 @@ public class AyuMessagesController {
                 deletedReaction.documentId = ((TLRPC.TL_reactionCustomEmoji) reaction.reaction).document_id;
                 deletedReaction.isCustom = true;
             } else {
-                Log.e("AyuGram", "fake news emoji");
+                Log.e("ChotkoGram", "fake news emoji");
                 continue;
             }
 
@@ -231,7 +315,7 @@ public class AyuMessagesController {
                 try {
                     p.delete();
                 } catch (Exception e) {
-                    Log.e("AyuGram", "failed to delete file " + msg.message.mediaPath, e);
+                    Log.e("ChotkoGram", "failed to delete file " + msg.message.mediaPath, e);
                 }
             }
         }

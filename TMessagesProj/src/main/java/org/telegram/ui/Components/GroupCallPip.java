@@ -40,8 +40,6 @@ import org.telegram.ui.GroupCallActivity;
 
 import static android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
 
-import com.exteragram.messenger.ExteraConfig;
-
 public class GroupCallPip implements NotificationCenter.NotificationCenterDelegate {
 
     private static GroupCallPip instance;
@@ -127,12 +125,14 @@ public class GroupCallPip implements NotificationCenter.NotificationCenterDelega
                     VoIPService voIPService = VoIPService.getSharedInstance();
                     if (voIPService != null && voIPService.isMicMute()) {
                         ChatObject.Call call = voIPService.groupCall;
-                        TLRPC.TL_groupCallParticipant participant = call.participants.get(voIPService.getSelfId());
+                        TLRPC.GroupCallParticipant participant = call.participants.get(voIPService.getSelfId());
                         if (participant != null && !participant.can_self_unmute && participant.muted && !ChatObject.canManageCalls(voIPService.getChat())) {
                             return;
                         }
                         AndroidUtilities.runOnUIThread(micRunnable, 90);
-                        performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);
+                        try {
+                            performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);
+                        } catch (Exception ignore) {}
                         pressed = true;
                     }
                 }
@@ -256,7 +256,9 @@ public class GroupCallPip implements NotificationCenter.NotificationCenterDelega
                         if (pressed) {
                             if (VoIPService.getSharedInstance() != null) {
                                 VoIPService.getSharedInstance().setMicMute(true, false, false);
-                                performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);
+                                try {
+                                    performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);
+                                } catch (Exception ignored) {}
                             }
                             pressed = false;
                         } else if (event.getAction() == MotionEvent.ACTION_UP && !moving) {
@@ -323,7 +325,7 @@ public class GroupCallPip implements NotificationCenter.NotificationCenterDelega
             private void onTap() {
                 if (VoIPService.getSharedInstance() != null) {
                     showAlert(!showAlert);
-                    performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);
+                    //performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);x
                 }
             }
         };
@@ -689,7 +691,7 @@ public class GroupCallPip implements NotificationCenter.NotificationCenterDelega
                 long selfId = voIPService.getSelfId();
                 for (int a = 0, N = call.sortedParticipants.size(), k = 0; k < 2; a++) {
                     if (a < N) {
-                        TLRPC.TL_groupCallParticipant participant = call.sortedParticipants.get(a);
+                        TLRPC.GroupCallParticipant participant = call.sortedParticipants.get(a);
                         if (MessageObject.getPeerId(participant.peer) == selfId || (SystemClock.uptimeMillis() - participant.lastSpeakTime > 500)) {
                             continue;
                         }
@@ -891,7 +893,9 @@ public class GroupCallPip implements NotificationCenter.NotificationCenterDelega
                 iconView.playAnimation();
             }
             if (prepare) {
-                button.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);
+                try {
+                    button.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);
+                } catch (Exception ignored) {}
             }
         }
         button.prepareToRemove(prepare);

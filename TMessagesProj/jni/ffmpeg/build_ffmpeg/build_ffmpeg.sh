@@ -15,8 +15,8 @@
 # 6) run build_ffmpeg.sh
 # 7) see compiled library in build_ffmpeg/adnroid folder
 
-NDK="/opt/android/ndk/android-ndk-r21e"
-NDK_r10e="/opt/android/ndk/android-ndk-r10e"
+NDK="~/Library/Android/sdk/ndk/android-ndk-r21e"
+NDK_r10e="~/Library/Android/sdk/ndk/android-ndk-r10e"
 
 #build vpx
 cd ./vpx-android
@@ -76,21 +76,30 @@ LIBS=" -L${PREFIX}/lib"
 \
 --enable-libvpx \
 --enable-decoder=libvpx_vp9 \
+--enable-encoder=libvpx_vp9 \
+--enable-muxer=matroska \
+--enable-bsf=vp9_superframe \
+--enable-bsf=vp9_raw_reorder \
 --enable-runtime-cpudetect \
 --enable-pthreads \
 --enable-avresample \
 --enable-swscale \
 --enable-protocol=file \
 --enable-decoder=h264 \
+--enable-decoder=h265 \
 --enable-decoder=mpeg4 \
 --enable-decoder=mjpeg \
 --enable-decoder=gif \
 --enable-decoder=alac \
 --enable-decoder=opus \
+--enable-decoder=mp3 \
+--enable-decoder=aac \
 --enable-demuxer=mov \
 --enable-demuxer=gif \
 --enable-demuxer=ogg \
 --enable-demuxer=matroska \
+--enable-demuxer=mp3 \
+--enable-demuxer=aac \
 --enable-hwaccels \
 --enable-runtime-cpudetect \
 $ADDITIONAL_CONFIGURE_FLAG

@@ -18,16 +18,17 @@ import android.opengl.EGLContext;
 import android.opengl.EGLDisplay;
 import android.opengl.EGLExt;
 import android.opengl.EGLSurface;
+import android.opengl.GLException;
 import android.os.Build;
-import androidx.annotation.Nullable;
 import android.view.Surface;
-import org.webrtc.EglBase;
+import androidx.annotation.Nullable;
 
 /**
  * Holds EGL state and utility methods for handling an EGL14 EGLContext, an EGLDisplay,
  * and an EGLSurface.
  */
 @SuppressWarnings("ReferenceEquality") // We want to compare to EGL14 constants.
+@TargetApi(18)
 class EglBase14Impl implements EglBase14 {
   private static final String TAG = "EglBase14Impl";
   private static final int EGLExt_SDK_VERSION = Build.VERSION_CODES.JELLY_BEAN_MR2;
@@ -57,6 +58,7 @@ class EglBase14Impl implements EglBase14 {
 
     @Override
     @SuppressWarnings("deprecation")
+    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     public long getNativeEglContext() {
       return CURRENT_SDK_VERSION >= Build.VERSION_CODES.LOLLIPOP ? egl14Context.getNativeHandle()
                                                                  : egl14Context.getHandle();
@@ -282,12 +284,12 @@ class EglBase14Impl implements EglBase14 {
   private static EGLDisplay getEglDisplay() {
     EGLDisplay eglDisplay = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY);
     if (eglDisplay == EGL14.EGL_NO_DISPLAY) {
-      throw new RuntimeException(
+      throw new GLException(EGL14.eglGetError(),
           "Unable to get EGL14 display: 0x" + Integer.toHexString(EGL14.eglGetError()));
     }
     int[] version = new int[2];
     if (!EGL14.eglInitialize(eglDisplay, version, 0, version, 1)) {
-      throw new RuntimeException(
+      throw new GLException(EGL14.eglGetError(),
           "Unable to initialize EGL14: 0x" + Integer.toHexString(EGL14.eglGetError()));
     }
     return eglDisplay;
@@ -299,7 +301,7 @@ class EglBase14Impl implements EglBase14 {
     int[] numConfigs = new int[1];
     if (!EGL14.eglChooseConfig(
             eglDisplay, configAttributes, 0, configs, 0, configs.length, numConfigs, 0)) {
-      throw new RuntimeException(
+      throw new GLException(EGL14.eglGetError(),
           "eglChooseConfig failed: 0x" + Integer.toHexString(EGL14.eglGetError()));
     }
     if (numConfigs[0] <= 0) {
@@ -325,7 +327,7 @@ class EglBase14Impl implements EglBase14 {
       eglContext = EGL14.eglCreateContext(eglDisplay, eglConfig, rootContext, contextAttributes, 0);
     }
     if (eglContext == EGL14.EGL_NO_CONTEXT) {
-      throw new RuntimeException(
+      throw new GLException(EGL14.eglGetError(),
           "Failed to create EGL context: 0x" + Integer.toHexString(EGL14.eglGetError()));
     }
     return eglContext;

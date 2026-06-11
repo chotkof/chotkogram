@@ -20,6 +20,8 @@ import android.os.SystemClock;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.google.android.exoplayer2.util.Log;
+
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.ui.ActionBar.Theme;
 
@@ -140,18 +142,20 @@ public class LoadingDrawable extends Drawable {
     }
 
     public void setRadiiDp(float allDp) {
+        setRadii(AndroidUtilities.dp(allDp));
+    }
+    public void setRadii(float all) {
         if (usePath != null) {
-            paint.setPathEffect(new CornerPathEffect(AndroidUtilities.dp(allDp)));
-            strokePaint.setPathEffect(new CornerPathEffect(AndroidUtilities.dp(allDp)));
+            paint.setPathEffect(new CornerPathEffect(all));
+            strokePaint.setPathEffect(new CornerPathEffect(all));
         } else {
-            setRadiiDp(allDp, allDp, allDp, allDp);
+            setRadii(all, all, all, all);
         }
     }
 
     public void setRadiiDp(float topLeftDp, float topRightDp, float bottomRightDp, float bottomLeftDp) {
         setRadii(AndroidUtilities.dp(topLeftDp), AndroidUtilities.dp(topRightDp), AndroidUtilities.dp(bottomRightDp), AndroidUtilities.dp(bottomLeftDp));
     }
-
     public void setRadii(float topLeft, float topRight, float bottomRight, float bottomLeft) {
         final boolean changed = (
             radii[0] != topLeft ||
@@ -191,6 +195,7 @@ public class LoadingDrawable extends Drawable {
 
     public void setBounds(@NonNull RectF bounds) {
         super.setBounds((int) bounds.left, (int) bounds.top, (int) bounds.right, (int) bounds.bottom);
+        lastBounds = null;
     }
 
     public void reset() {
@@ -367,6 +372,7 @@ public class LoadingDrawable extends Drawable {
     @Override
     public void setAlpha(int i) {
         paint.setAlpha(i);
+        strokePaint.setAlpha(i);
         if (i > 0) {
             invalidateSelf();
         }

@@ -91,7 +91,7 @@ public class MessageDetailsPopupWrapper {
             items.add(new Item(R.drawable.msg_calendar2, LocaleController.getString(R.string.Date), formatTime(messageObject.messageOwner.date, true)));
         }
 
-        // --- AyuGram hook
+        // --- ChotkoGram hook
 
         if (messageObject.messageOwner.ayuDeleted) {
             var userId = AccountInstance.getInstance(UserConfig.selectedAccount).getUserConfig().clientUserId;
@@ -102,7 +102,7 @@ public class MessageDetailsPopupWrapper {
             }
         }
 
-        // --- AyuGram hook
+        // --- ChotkoGram hook
 
         if (messageObject.messageOwner.fwd_from != null && messageObject.messageOwner.fwd_from.date > 0 && messageObject.messageOwner.fwd_from.date != messageObject.messageOwner.date) {
             items.add(new Item(R.drawable.msg_recent, LocaleController.getString(R.string.ForwardedDate), formatTime(messageObject.messageOwner.fwd_from.date, true)));
@@ -277,8 +277,8 @@ public class MessageDetailsPopupWrapper {
             return LocaleController.getString(R.string.SendWhenOnline);
         } else {
             return full ? LocaleController.formatString("formatDateAtTime", R.string.formatDateAtTime,
-                    LocaleController.getInstance().formatterYear.format(new Date(timestamp * 1000L)),
-                    LocaleController.getInstance().formatterDayWithSeconds.format(new Date(timestamp * 1000L))
+                    LocaleController.getInstance().getFormatterYear().format(new Date(timestamp * 1000L)),
+                    LocaleController.getInstance().getFormatterDayWithSeconds().format(new Date(timestamp * 1000L))
             ) : LocaleController.formatDateAudio(timestamp, true);
         }
     }

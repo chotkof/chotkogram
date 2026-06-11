@@ -36,6 +36,7 @@ import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.StickersAlert;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 
 public class ArchivedStickersActivity extends BaseFragment implements NotificationCenter.NotificationCenterDelegate {
@@ -47,6 +48,7 @@ public class ArchivedStickersActivity extends BaseFragment implements Notificati
     private LinearLayoutManager layoutManager;
     private RecyclerListView listView;
 
+    private HashSet<Long> loadedSets = new HashSet<>();
     private ArrayList<TLRPC.StickerSetCovered> sets = new ArrayList<>();
     private boolean firstLoaded;
     private boolean endReached;
@@ -92,11 +94,11 @@ public class ArchivedStickersActivity extends BaseFragment implements Notificati
         actionBar.setBackButtonImage(R.drawable.ic_ab_back);
         actionBar.setAllowOverlayTitle(true);
         if (currentType == MediaDataController.TYPE_IMAGE) {
-            actionBar.setTitle(LocaleController.getString("ArchivedStickers", R.string.ArchivedStickers));
+            actionBar.setTitle(LocaleController.getString(R.string.ArchivedStickers));
         } else if (currentType == MediaDataController.TYPE_EMOJIPACKS) {
-            actionBar.setTitle(LocaleController.getString("ArchivedEmojiPacks", R.string.ArchivedEmojiPacks));
+            actionBar.setTitle(LocaleController.getString(R.string.ArchivedEmojiPacks));
         } else {
-            actionBar.setTitle(LocaleController.getString("ArchivedMasks", R.string.ArchivedMasks));
+            actionBar.setTitle(LocaleController.getString(R.string.ArchivedMasks));
         }
         actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
@@ -115,9 +117,9 @@ public class ArchivedStickersActivity extends BaseFragment implements Notificati
 
         emptyView = new EmptyTextProgressView(context);
         if (currentType == MediaDataController.TYPE_IMAGE) {
-            emptyView.setText(LocaleController.getString("ArchivedStickersEmpty", R.string.ArchivedStickersEmpty));
+            emptyView.setText(LocaleController.getString(R.string.ArchivedStickersEmpty));
         } else {
-            emptyView.setText(LocaleController.getString("ArchivedMasksEmpty", R.string.ArchivedMasksEmpty));
+            emptyView.setText(LocaleController.getString(R.string.ArchivedMasksEmpty));
         }
         frameLayout.addView(emptyView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
         if (loadingStickers) {
@@ -130,6 +132,8 @@ public class ArchivedStickersActivity extends BaseFragment implements Notificati
         listView.setFocusable(true);
         listView.setEmptyView(emptyView);
         listView.setLayoutManager(layoutManager = new LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false));
+        listView.setSections();
+        actionBar.setAdaptiveBackground(listView);
 
         frameLayout.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
         listView.setAdapter(listAdapter);
@@ -145,7 +149,7 @@ public class ArchivedStickersActivity extends BaseFragment implements Notificati
                     inputStickerSet.short_name = stickerSet.set.short_name;
                 }
                 inputStickerSet.access_hash = stickerSet.set.access_hash;
-                final StickersAlert stickersAlert = new StickersAlert(getParentActivity(), ArchivedStickersActivity.this, inputStickerSet, null, null);
+                final StickersAlert stickersAlert = new StickersAlert(getParentActivity(), ArchivedStickersActivity.this, inputStickerSet, null, null, false);
                 stickersAlert.setInstallDelegate(new StickersAlert.StickersAlertInstallDelegate() {
                     @Override
                     public void onStickerSetInstalled() {
@@ -221,8 +225,14 @@ public class ArchivedStickersActivity extends BaseFragment implements Notificati
 
     private void processResponse(TLRPC.TL_messages_archivedStickers res) {
         if (!isInTransition) {
-            sets.addAll(res.sets);
-            endReached = res.sets.size() != 15;
+            int added = 0;
+            for (TLRPC.StickerSetCovered s : res.sets) {
+                if (loadedSets.contains(s.set.id)) continue;
+                loadedSets.add(s.set.id);
+                sets.add(s);
+                added++;
+            }
+            endReached = added <= 0;
             loadingStickers = false;
             firstLoaded = true;
             if (emptyView != null) {
@@ -344,7 +354,7 @@ public class ArchivedStickersActivity extends BaseFragment implements Notificati
                 if (position == archiveInfoRow) {
                     cell.setTopPadding(17);
                     cell.setBottomPadding(10);
-                    cell.setText(currentType == MediaDataController.TYPE_EMOJIPACKS ? LocaleController.getString("ArchivedEmojiInfo", R.string.ArchivedEmojiInfo) : LocaleController.getString("ArchivedStickersInfo", R.string.ArchivedStickersInfo));
+                    cell.setText(currentType == MediaDataController.TYPE_EMOJIPACKS ? LocaleController.getString(R.string.ArchivedEmojiInfo) : LocaleController.getString(R.string.ArchivedStickersInfo));
                 } else {
                     cell.setTopPadding(10);
                     cell.setBottomPadding(17);
@@ -368,11 +378,9 @@ public class ArchivedStickersActivity extends BaseFragment implements Notificati
                     break;
                 case 1:
                     view = new LoadingCell(mContext);
-                    view.setBackgroundDrawable(Theme.getThemedDrawableByKey(mContext, R.drawable.greydivider_bottom, Theme.key_windowBackgroundGrayShadow));
                     break;
                 case 2:
                     view = new TextInfoPrivacyCell(mContext);
-                    view.setBackgroundDrawable(Theme.getThemedDrawableByKey(mContext, R.drawable.greydivider_bottom, Theme.key_windowBackgroundGrayShadow));
                     break;
             }
             view.setLayoutParams(new RecyclerView.LayoutParams(RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT));
@@ -398,9 +406,8 @@ public class ArchivedStickersActivity extends BaseFragment implements Notificati
 
         themeDescriptions.add(new ThemeDescription(listView, ThemeDescription.FLAG_CELLBACKGROUNDCOLOR, new Class[]{ArchivedStickerSetCell.class}, null, null, null, Theme.key_windowBackgroundWhite));
         themeDescriptions.add(new ThemeDescription(fragmentView, ThemeDescription.FLAG_BACKGROUND, null, null, null, null, Theme.key_windowBackgroundGray));
-        themeDescriptions.add(new ThemeDescription(listView, ThemeDescription.FLAG_BACKGROUNDFILTER, new Class[]{LoadingCell.class, TextInfoPrivacyCell.class}, null, null, null, Theme.key_windowBackgroundGrayShadow));
 
-        themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_BACKGROUND, null, null, null, null, Theme.key_actionBarDefault));
+//        themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_BACKGROUND, null, null, null, null, Theme.key_actionBarDefault));
         themeDescriptions.add(new ThemeDescription(listView, ThemeDescription.FLAG_LISTGLOWCOLOR, null, null, null, null, Theme.key_actionBarDefault));
         themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_ITEMSCOLOR, null, null, null, null, Theme.key_actionBarDefaultIcon));
         themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_TITLECOLOR, null, null, null, null, Theme.key_actionBarDefaultTitle));
@@ -417,7 +424,6 @@ public class ArchivedStickersActivity extends BaseFragment implements Notificati
         themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{ArchivedStickerSetCell.class}, new String[]{"textView"}, null, null, null, Theme.key_windowBackgroundWhiteBlackText));
         themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{ArchivedStickerSetCell.class}, new String[]{"valueTextView"}, null, null, null, Theme.key_windowBackgroundWhiteGrayText2));
 
-        themeDescriptions.add(new ThemeDescription(listView, ThemeDescription.FLAG_BACKGROUNDFILTER, new Class[]{TextInfoPrivacyCell.class}, null, null, null, Theme.key_windowBackgroundGrayShadow));
         themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{TextInfoPrivacyCell.class}, new String[]{"textView"}, null, null, null, Theme.key_windowBackgroundWhiteGrayText4));
 
         themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{ArchivedStickerSetCell.class}, new String[]{"deleteButton"}, null, null, null, Theme.key_featuredStickers_removeButtonText));
@@ -427,5 +433,16 @@ public class ArchivedStickersActivity extends BaseFragment implements Notificati
         themeDescriptions.add(new ThemeDescription(listView, ThemeDescription.FLAG_USEBACKGROUNDDRAWABLE | ThemeDescription.FLAG_DRAWABLESELECTEDSTATE, new Class[]{ArchivedStickerSetCell.class}, new String[]{"addButton"}, null, null, null, Theme.key_featuredStickers_addButtonPressed));
 
         return themeDescriptions;
+    }
+
+    @Override
+    public boolean isSupportEdgeToEdge() {
+        return true;
+    }
+
+    @Override
+    public void onInsets(int left, int top, int right, int bottom) {
+        listView.setPadding(0, 0, 0, bottom);
+        listView.setClipToPadding(false);
     }
 }

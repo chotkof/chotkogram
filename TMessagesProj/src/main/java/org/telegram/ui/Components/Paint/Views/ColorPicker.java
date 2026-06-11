@@ -66,9 +66,10 @@ public class ColorPicker extends FrameLayout {
             0.85f,
             1.0f
     };
-    
+
     public ImageView settingsButton;
     private ImageView undoButton;
+    private Drawable shadowDrawable;
 
     private Paint gradientPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private Paint backgroundPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -84,12 +85,13 @@ public class ColorPicker extends FrameLayout {
     public ColorPicker(Context context) {
         super(context);
         setWillNotDraw(false);
+        shadowDrawable = getResources().getDrawable(R.drawable.knob_shadow);
         backgroundPaint.setColor(0xffffffff);
         swatchStrokePaint.setStyle(Paint.Style.STROKE);
         swatchStrokePaint.setStrokeWidth(AndroidUtilities.dp(1));
 
         settingsButton = new ImageView(context);
-        settingsButton.setContentDescription(LocaleController.getString("AccDescrBrushType", R.string.AccDescrBrushType));
+        settingsButton.setContentDescription(LocaleController.getString(R.string.AccDescrBrushType));
         settingsButton.setScaleType(ImageView.ScaleType.CENTER);
         settingsButton.setImageResource(R.drawable.photo_paint_brush);
         addView(settingsButton, LayoutHelper.createFrame(46, 52));
@@ -100,7 +102,7 @@ public class ColorPicker extends FrameLayout {
         });
 
         undoButton = new ImageView(context);
-        undoButton.setContentDescription(LocaleController.getString("Undo", R.string.Undo));
+        undoButton.setContentDescription(LocaleController.getString(R.string.UndoNoCaps));
         undoButton.setScaleType(ImageView.ScaleType.CENTER);
         undoButton.setImageResource(R.drawable.photo_undo);
         addView(undoButton, LayoutHelper.createFrame(46, 52));
@@ -232,7 +234,7 @@ public class ColorPicker extends FrameLayout {
                 SharedPreferences.Editor editor = getContext().getSharedPreferences("paint", Activity.MODE_PRIVATE).edit();
                 editor.putFloat("last_color_location", location);
                 editor.putFloat("last_color_weight", weight);
-                editor.apply();
+                editor.commit();
             }
             interacting = false;
             wasChangingWeight = changingWeight;
@@ -288,10 +290,11 @@ public class ColorPicker extends FrameLayout {
         int cy = (int) (rectF.centerY() + draggingFactor * -AndroidUtilities.dp(70) - (changingWeight ? weight * AndroidUtilities.dp(190) : 0.0f));
 
         int side = (int) (AndroidUtilities.dp(24) * (0.5f * (1 + draggingFactor)));
+        shadowDrawable.setBounds(cx - side, cy - side, cx + side, cy + side);
+        shadowDrawable.draw(canvas);
 
         float swatchRadius = (int) Math.floor(AndroidUtilities.dp(4) + (AndroidUtilities.dp(19) - AndroidUtilities.dp(4)) * weight) * (1 + draggingFactor) / 2;
 
-        canvas.drawCircle(cx, cy, AndroidUtilities.dp(22) / 2 * (draggingFactor + 1) + 0.5f, swatchStrokePaint);
         canvas.drawCircle(cx, cy, AndroidUtilities.dp(22) / 2 * (draggingFactor + 1), backgroundPaint);
         canvas.drawCircle(cx, cy, swatchRadius, swatchPaint);
         canvas.drawCircle(cx, cy, swatchRadius - AndroidUtilities.dp(0.5f), swatchStrokePaint);

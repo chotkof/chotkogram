@@ -342,7 +342,6 @@ public class DoubleTapCell extends LinearLayout {
                 }
             }
             SelectAnimatedEmojiDialog popupLayout = new SelectAnimatedEmojiDialog(fragment, fragment.getContext(), false, xoff, SelectAnimatedEmojiDialog.TYPE_SET_DEFAULT_REACTION, null) {
-                @Override
                 protected void onEmojiSelected(View emojiView, Long documentId, TLRPC.Document document, Integer until) {
                     if (documentId == null) {
                         return;

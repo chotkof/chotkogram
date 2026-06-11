@@ -252,6 +252,7 @@ public class NotificationBadge {
             return Collections.singletonList("com.oppo.launcher");
         }
 
+        @TargetApi(Build.VERSION_CODES.HONEYCOMB)
         private void executeBadgeByContentProvider(int badgeCount) {
             try {
                 Bundle extras = new Bundle();
@@ -453,6 +454,7 @@ public class NotificationBadge {
 
         private final Uri CONTENT_URI = Uri.parse("content://com.android.badge/badge");
 
+        @TargetApi(Build.VERSION_CODES.HONEYCOMB)
         @Override
         public void executeBadge(int badgeCount) {
             final Bundle extra = new Bundle();
@@ -477,6 +479,7 @@ public class NotificationBadge {
         @Override
         public void executeBadge(int badgeCount) {
             Intent intent = new Intent("launcher.action.CHANGE_APPLICATION_NOTIFICATION_NUM");
+            intent.setPackage("com.vivo.launcher");
             intent.putExtra("packageName", ApplicationLoader.applicationContext.getPackageName());
             intent.putExtra("className", componentName.getClassName());
             intent.putExtra("notificationNum", badgeCount);

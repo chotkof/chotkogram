@@ -30,13 +30,10 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.exteragram.messenger.ExteraConfig;
-import com.exteragram.messenger.components.VerticalImageSpan;
-
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
-import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.AvatarSpan;
 import org.telegram.ui.Components.AnimationProperties;
 import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.LayoutHelper;
@@ -44,9 +41,12 @@ import org.telegram.ui.Components.RLottieImageView;
 import org.telegram.ui.Components.Switch;
 
 import java.util.ArrayList;
+import java.util.Locale;
 
 public class TextCheckCell extends FrameLayout {
     private boolean isAnimatingToThumbInsteadOfTouch;
+
+    public int itemId;
 
     private TextView textView;
     private TextView valueTextView;
@@ -103,7 +103,6 @@ public class TextCheckCell extends FrameLayout {
         textView = new TextView(context);
         textView.setTextColor(Theme.getColor(dialog ? Theme.key_dialogTextBlack : Theme.key_windowBackgroundWhiteBlackText, resourcesProvider));
         textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
-        textView.setTypeface(AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_REGULAR));
         textView.setLines(1);
         textView.setMaxLines(1);
         textView.setSingleLine(true);
@@ -113,7 +112,6 @@ public class TextCheckCell extends FrameLayout {
 
         valueTextView = new TextView(context);
         valueTextView.setTextColor(Theme.getColor(dialog ? Theme.key_dialogIcon : Theme.key_windowBackgroundWhiteGrayText2, resourcesProvider));
-        valueTextView.setTypeface(AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_REGULAR));
         valueTextView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
         valueTextView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
         valueTextView.setLines(1);
@@ -142,6 +140,10 @@ public class TextCheckCell extends FrameLayout {
         checkBox.setIcon(icon);
     }
 
+    public Switch getCheckBox() {
+        return checkBox;
+    }
+
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         if (isMultiline) {
@@ -162,7 +164,8 @@ public class TextCheckCell extends FrameLayout {
         setWillNotDraw(!divider);
     }
 
-    public void setTextAndCheck(String text, boolean checked, boolean divider) {
+    public void setTextAndCheck(CharSequence text, boolean checked, boolean divider) {
+        AvatarSpan.checkSpansParent(text, this);
         textView.setText(text);
         isMultiline = false;
         checkBox.setVisibility(View.VISIBLE);
@@ -221,12 +224,9 @@ public class TextCheckCell extends FrameLayout {
     }
 
     public void setTextAndValueAndCheck(String text, String value, boolean checked, boolean multiline, boolean divider) {
-        if (value != null && value.contains("->")) {
-            valueTextView.setText(VerticalImageSpan.createSpan(getContext(), R.drawable.search_arrow, value, "->", Theme.key_windowBackgroundWhiteGrayText2, resourcesProvider));
-        } else {
-            valueTextView.setText(value);
-        }
+        AvatarSpan.checkSpansParent(text, this);
         textView.setText(text);
+        valueTextView.setText(value);
         checkBox.setVisibility(View.VISIBLE);
         checkBox.setChecked(checked, false);
         needDivider = divider;
@@ -253,6 +253,7 @@ public class TextCheckCell extends FrameLayout {
     }
 
     public void setTextAndValue(String text, String value, boolean multiline, boolean divider) {
+        AvatarSpan.checkSpansParent(text, this);
         textView.setText(text);
         valueTextView.setText(value);
         checkBox.setVisibility(View.GONE);
@@ -306,9 +307,11 @@ public class TextCheckCell extends FrameLayout {
 
     @Override
     public void setBackgroundColor(int color) {
-        clearAnimation();
-        animatedColorBackground = 0;
-        super.setBackgroundColor(color);
+        if (animatedColorBackground != color) {
+            clearAnimation();
+            animatedColorBackground = 0;
+            super.setBackgroundColor(color);
+        }
     }
 
     public void setBackgroundColorAnimated(boolean checked, int color) {
@@ -330,8 +333,8 @@ public class TextCheckCell extends FrameLayout {
         animator.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
-                setBackgroundColor(animatedColorBackground);
                 animatedColorBackground = 0;
+                setBackgroundColor(color);
                 invalidate();
             }
         });
@@ -389,11 +392,14 @@ public class TextCheckCell extends FrameLayout {
             float animatedRad = rad * animationProgress;
             canvas.drawCircle(cx, cy, animatedRad, animationPaint);
         }
-        if (needDivider && !ExteraConfig.disableDividers) {
-            if (imageView != null) {
-                canvas.drawLine(LocaleController.isRTL ? 0 : padding, getMeasuredHeight() - 1, getMeasuredWidth() - (LocaleController.isRTL ? padding : 0), getMeasuredHeight() - 1, Theme.dividerPaint);
-            } else {
-                canvas.drawLine(LocaleController.isRTL ? 0 : AndroidUtilities.dp(20), getMeasuredHeight() - 1, getMeasuredWidth() - (LocaleController.isRTL ? AndroidUtilities.dp(20) : 0), getMeasuredHeight() - 1, Theme.dividerPaint);
+        if (needDivider) {
+            Paint dividerPaint = resourcesProvider != null ? resourcesProvider.getPaint(Theme.key_paint_divider) : Theme.dividerPaint;
+            if (dividerPaint != null) {
+                if (imageView != null) {
+                    canvas.drawLine(LocaleController.isRTL ? 0 : padding, getMeasuredHeight() - 1, getMeasuredWidth() - (LocaleController.isRTL ? padding : 0), getMeasuredHeight() - 1, dividerPaint);
+                } else {
+                    canvas.drawLine(LocaleController.isRTL ? 0 : AndroidUtilities.dp(20), getMeasuredHeight() - 1, getMeasuredWidth() - (LocaleController.isRTL ? AndroidUtilities.dp(20) : 0), getMeasuredHeight() - 1, dividerPaint);
+                }
             }
         }
     }
@@ -443,7 +449,7 @@ public class TextCheckCell extends FrameLayout {
         imageView.setVisibility(VISIBLE);
         imageView.setPadding(AndroidUtilities.dp(2), AndroidUtilities.dp(2), AndroidUtilities.dp(2), AndroidUtilities.dp(2));
         imageView.setImageResource(resId);
-        imageView.setColorFilter(new PorterDuffColorFilter(Theme.getActiveTheme().isMonet() ? Theme.getColor(Theme.key_chats_actionIcon) : Color.WHITE, PorterDuff.Mode.SRC_IN));
-        imageView.setBackground(Theme.createRoundRectDrawable(AndroidUtilities.dp(9), Theme.getActiveTheme().isMonet() ? Theme.getColor(Theme.key_chats_actionBackground) : color));
+        imageView.setColorFilter(new PorterDuffColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN));
+        imageView.setBackground(Theme.createRoundRectDrawable(AndroidUtilities.dp(9), color));
     }
 }

@@ -1,5 +1,5 @@
 /*
- * This is the source code of AyuGram for Android.
+ * This is the source code of ChotkoGram for Android.
  *
  * We do not and cannot prevent the use of our code,
  * but be respectful and credit the original author.
@@ -47,7 +47,7 @@ public class AyuSavePreferences {
         }
 
         this.dialogId = msg.dialog_id;
-        this.topicId = MessageObject.getTopicId(msg, false);
+        this.topicId = (int) MessageObject.getTopicId(accountId, msg, false);
         this.messageId = msg.id;
         this.requestCatchTime = (int) (System.currentTimeMillis() / 1000);
     }

@@ -1,5 +1,5 @@
 /*
- * This is the source code of AyuGram for Android.
+ * This is the source code of ChotkoGram for Android.
  *
  * We do not and cannot prevent the use of our code,
  * but be respectful and credit the original author.
@@ -45,11 +45,14 @@ public class AyuConfig {
     public static boolean keepAliveService;
     public static boolean disableAds;
     public static boolean localPremium;
+    public static boolean sendFunCommands;
     public static boolean regexFiltersEnabled;
     public static boolean regexFiltersInChats;
     public static boolean regexFiltersCaseInsensitive;
     public static boolean showGhostToggleInDrawer;
     public static boolean showKillButtonInDrawer;
+    public static boolean classicTelegramInterface;
+    public static int appStyle;
     public static boolean syncEnabled;
     public static boolean useSecureConnection;
     public static boolean WALMode;
@@ -79,17 +82,17 @@ public class AyuConfig {
             useScheduledMessages = preferences.getBoolean("useScheduledMessages", false);
 
             // ~ Message edits & deletion history
-            saveDeletedMessages = preferences.getBoolean("saveDeletedMessages", true);
+            saveDeletedMessages = true;
             saveMessagesHistory = preferences.getBoolean("saveMessagesHistory", true);
 
             // ~ Message saving preferences
-            saveMedia = preferences.getBoolean("saveMedia", true);
-            saveMediaInPrivateChats = preferences.getBoolean("saveMediaInPrivateChats", true);
-            saveMediaInPublicChannels = preferences.getBoolean("saveMediaInPublicChannels", false);
-            saveMediaInPrivateChannels = preferences.getBoolean("saveMediaInPrivateChannels", true);
-            saveMediaInPublicGroups = preferences.getBoolean("saveMediaInPublicGroups", false);
-            saveMediaInPrivateGroups = preferences.getBoolean("saveMediaInPrivateGroups", true);
-            saveForBots = preferences.getBoolean("saveForBots", true);
+            saveMedia = true;
+            saveMediaInPrivateChats = true;
+            saveMediaInPublicChannels = true;
+            saveMediaInPrivateChannels = true;
+            saveMediaInPublicGroups = true;
+            saveMediaInPrivateGroups = true;
+            saveForBots = true;
 
             saveFormatting = preferences.getBoolean("saveFormatting", true);
             saveReactions = preferences.getBoolean("saveReactions", true);
@@ -98,6 +101,7 @@ public class AyuConfig {
             keepAliveService = preferences.getBoolean("keepAliveService", true);
             disableAds = preferences.getBoolean("disableAds", true);
             localPremium = preferences.getBoolean("localPremium", false);
+            sendFunCommands = preferences.getBoolean("sendFunCommands", true);
             regexFiltersEnabled = preferences.getBoolean("regexFiltersEnabled", false);
             regexFiltersInChats = preferences.getBoolean("regexFiltersInChats", false);
             regexFiltersCaseInsensitive = preferences.getBoolean("regexFiltersCaseInsensitive", true);
@@ -106,8 +110,10 @@ public class AyuConfig {
             // ~ Customization
             // deletedMarkText
             // editedMarkText
-            showGhostToggleInDrawer = preferences.getBoolean("showGhostToggleInDrawer", true);
+            showGhostToggleInDrawer = preferences.getBoolean("showGhostToggleInDrawer", false);
             showKillButtonInDrawer = preferences.getBoolean("showKillButtonInDrawer", false);
+            classicTelegramInterface = preferences.getBoolean("classicTelegramInterface", true);
+            appStyle = preferences.getInt("appStyle", 0);
 
             // ~ AyuSync
             // syncServerURL
@@ -144,16 +150,7 @@ public class AyuConfig {
     }
 
     public static boolean saveDeletedMessageFor(int accountId, long dialogId) {
-        if (!AyuConfig.saveDeletedMessages) {
-            return false;
-        }
-
-        var user = MessagesController.getInstance(accountId).getUser(Math.abs(dialogId));
-        if (user == null) {
-            return true;
-        }
-
-        return !user.bot || AyuConfig.saveForBots;
+        return true;
     }
 
     public static boolean saveEditedMessageFor(int accountId, long dialogId) {
@@ -170,11 +167,37 @@ public class AyuConfig {
     }
 
     public static String getDeletedMark() {
-        return AyuConfig.preferences.getString("deletedMarkText", AyuConstants.DEFAULT_DELETED_MARK);
+        return AyuConfig.preferences.getString("deletedMarkText", getDefaultDeletedMark());
     }
 
     public static String getEditedMark() {
         return AyuConfig.preferences.getString("editedMarkText", LocaleController.getString("EditedMessage", R.string.EditedMessage));
+    }
+
+    public static String getAppStyleName() {
+        switch (appStyle) {
+            case 1:
+                return LocaleController.getString(R.string.AppStyleMinimal);
+            case 2:
+                return LocaleController.getString(R.string.AppStyleClassic);
+            case 3:
+                return LocaleController.getString(R.string.AppStyleMidnight);
+            default:
+                return LocaleController.getString(R.string.AppStyleNeon);
+        }
+    }
+
+    public static String getDefaultDeletedMark() {
+        switch (appStyle) {
+            case 1:
+                return "\u2022";
+            case 2:
+                return AyuConstants.DEFAULT_DELETED_MARK;
+            case 3:
+                return "\u2715";
+            default:
+                return "\uD83D\uDD25";
+        }
     }
 
     public static String getWALMode() {

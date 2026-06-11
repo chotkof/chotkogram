@@ -162,6 +162,7 @@ public final class AudioAttributes implements Bundleable {
    * <p>Some fields are ignored if the corresponding {@link android.media.AudioAttributes.Builder}
    * setter is not available on the current API level.
    */
+  @RequiresApi(21)
   public AudioAttributesV21 getAudioAttributesV21() {
     if (audioAttributesV21 == null) {
       audioAttributesV21 = new AudioAttributesV21(this);

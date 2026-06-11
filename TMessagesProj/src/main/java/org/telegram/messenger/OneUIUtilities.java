@@ -9,6 +9,8 @@ public class OneUIUtilities {
 
     private static Boolean isOneUI;
     private static int oneUIEncodedVersion;
+    private static int oneUIMajorVersion;
+    private static float oneUIMinorVersion;
 
     @SuppressWarnings("JavaReflectionMemberAccess")
     public static boolean isOneUI() {
@@ -26,6 +28,8 @@ public class OneUIUtilities {
             }
 
             oneUIEncodedVersion = semPlatformInt - 90000;
+            oneUIMajorVersion = oneUIEncodedVersion / 10000;
+            oneUIMinorVersion = (oneUIEncodedVersion % 10000) / 100F;
             isOneUI = true;
         } catch (Exception e) {
             isOneUI = false;
@@ -37,6 +41,13 @@ public class OneUIUtilities {
         return isOneUI() && getOneUIEncodedVersion() == ONE_UI_4_0;
     }
 
+    public static int getOneUIMajorVersion() {
+        if (!isOneUI()) {
+            return 0;
+        }
+        return oneUIMajorVersion;
+    }
+
     public static int getOneUIEncodedVersion() {
         if (!isOneUI()) {
             return 0;
@@ -44,4 +55,10 @@ public class OneUIUtilities {
         return oneUIEncodedVersion;
     }
 
+    public static float getOneUIMinorVersion() {
+        if (!isOneUI()) {
+            return 0;
+        }
+        return oneUIMinorVersion;
+    }
 }

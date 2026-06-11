@@ -200,12 +200,13 @@ import java.lang.reflect.Method;
    */
   public AudioTrackPositionTracker(Listener listener) {
     this.listener = Assertions.checkNotNull(listener);
-    try {
-      getLatencyMethod = AudioTrack.class.getMethod("getLatency", (Class<?>[]) null);
-    } catch (NoSuchMethodException e) {
-      // There's no guarantee this method exists. Do nothing.
+    if (Util.SDK_INT >= 18) {
+      try {
+        getLatencyMethod = AudioTrack.class.getMethod("getLatency", (Class<?>[]) null);
+      } catch (NoSuchMethodException e) {
+        // There's no guarantee this method exists. Do nothing.
+      }
     }
-
     playheadOffsets = new long[MAX_PLAYHEAD_OFFSET_COUNT];
   }
 

@@ -22,8 +22,6 @@ import org.telegram.ui.Components.AvatarDrawable;
 import org.telegram.ui.Components.BackupImageView;
 import org.telegram.ui.Components.LayoutHelper;
 
-import com.exteragram.messenger.ExteraConfig;
-
 public class MemberRequestCell extends FrameLayout {
 
     private final AvatarDrawable avatarDrawable = new AvatarDrawable();
@@ -37,14 +35,14 @@ public class MemberRequestCell extends FrameLayout {
     public MemberRequestCell(@NonNull Context context, OnClickListener clickListener, boolean isChannel) {
         super(context);
 
-        avatarImageView.setRoundRadius(ExteraConfig.getAvatarCorners(46));
+        avatarImageView.setRoundRadius(AndroidUtilities.dp(23));
         addView(avatarImageView, LayoutHelper.createFrame(46, 46, LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT, 12, 8, 12, 0));
 
         nameTextView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
         nameTextView.setMaxLines(1);
         nameTextView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
         nameTextView.setTextSize(17);
-        nameTextView.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+        nameTextView.setTypeface(AndroidUtilities.bold());
         addView(nameTextView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP, LocaleController.isRTL ? 12 : 74, 12, LocaleController.isRTL ? 74 : 12, 0));
 
         statusTextView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
@@ -59,10 +57,10 @@ public class MemberRequestCell extends FrameLayout {
         addButton.setGravity((LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
         addButton.setMaxLines(1);
         addButton.setPadding(btnPadding, 0, btnPadding, 0);
-        addButton.setText(isChannel ? LocaleController.getString("AddToChannel", R.string.AddToChannel) : LocaleController.getString("AddToGroup", R.string.AddToGroup));
+        addButton.setText(isChannel ? LocaleController.getString(R.string.AddToChannel) : LocaleController.getString(R.string.AddToGroup));
         addButton.setTextColor(Theme.getColor(Theme.key_featuredStickers_buttonText));
         addButton.setTextSize(14);
-        addButton.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+        addButton.setTypeface(AndroidUtilities.bold());
         addButton.setOnClickListener(v -> {
             if (clickListener != null && importer != null) {
                 clickListener.onAddClicked(importer);
@@ -76,10 +74,10 @@ public class MemberRequestCell extends FrameLayout {
         dismissButton.setGravity((LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
         dismissButton.setMaxLines(1);
         dismissButton.setPadding(btnPadding, 0, btnPadding, 0);
-        dismissButton.setText(LocaleController.getString("Dismiss", R.string.Dismiss));
+        dismissButton.setText(LocaleController.getString(R.string.Dismiss));
         dismissButton.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
         dismissButton.setTextSize(14);
-        dismissButton.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+        dismissButton.setTypeface(AndroidUtilities.bold());
         dismissButton.setOnClickListener(v -> {
             if (clickListener != null && importer != null) {
                 clickListener.onDismissClicked(importer);
@@ -103,7 +101,7 @@ public class MemberRequestCell extends FrameLayout {
         nameTextView.setText(UserObject.getUserName(user));
         String dateText = LocaleController.formatDateAudio(importer.date, false);
         if (importer.via_chatlist) {
-            statusTextView.setText(LocaleController.getString("JoinedViaFolder", R.string.JoinedViaFolder));
+            statusTextView.setText(LocaleController.getString(R.string.JoinedViaFolder));
         } else if (importer.approved_by == 0) {
             statusTextView.setText(LocaleController.formatString("RequestedToJoinAt", R.string.RequestedToJoinAt, dateText));
         } else {
@@ -136,7 +134,7 @@ public class MemberRequestCell extends FrameLayout {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        if (isNeedDivider && !ExteraConfig.disableDividers) {
+        if (isNeedDivider) {
             canvas.drawLine(LocaleController.isRTL ? 0 : AndroidUtilities.dp(72), getMeasuredHeight() - 1, getMeasuredWidth() - (LocaleController.isRTL ? AndroidUtilities.dp(72) : 0), getMeasuredHeight() - 1, Theme.dividerPaint);
         }
     }

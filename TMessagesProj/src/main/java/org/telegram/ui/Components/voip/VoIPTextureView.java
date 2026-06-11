@@ -52,6 +52,7 @@ public class VoIPTextureView extends FrameLayout {
     public TextureView blurRenderer;
     public final ImageView imageView;
     public View backgroundView;
+    private View placeholderView;
     private FrameLayout screencastView;
     private ImageView screencastImage;
     private TextView screencastText;
@@ -167,26 +168,29 @@ public class VoIPTextureView extends FrameLayout {
         screencastView.addView(screencastImage, LayoutHelper.createFrame(82, 82, Gravity.CENTER, 0, 0, 0, 60));
 
         screencastText = new TextView(getContext());
-        screencastText.setText(LocaleController.getString("VoipVideoScreenSharing", R.string.VoipVideoScreenSharing));
+        screencastText.setText(LocaleController.getString(R.string.VoipVideoScreenSharing));
         screencastText.setGravity(Gravity.CENTER);
         screencastText.setLineSpacing(AndroidUtilities.dp(2), 1.0f);
         screencastText.setTextColor(0xffffffff);
         screencastText.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
-        screencastText.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+        screencastText.setTypeface(AndroidUtilities.bold());
         screencastView.addView(screencastText, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER, 21, 28, 21, 0));
 
         if (applyRoundRadius) {
-            setOutlineProvider(new ViewOutlineProvider() {
-                @Override
-                public void getOutline(View view, Outline outline) {
-                    if (roundRadius < 1) {
-                        outline.setRect((int) currentClipHorizontal, (int) currentClipVertical, (int) (view.getMeasuredWidth() - currentClipHorizontal), (int) (view.getMeasuredHeight() - currentClipVertical));
-                    } else {
-                        outline.setRoundRect((int) currentClipHorizontal, (int) currentClipVertical, (int) (view.getMeasuredWidth() - currentClipHorizontal), (int) (view.getMeasuredHeight() - currentClipVertical), roundRadius);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                setOutlineProvider(new ViewOutlineProvider() {
+                    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+                    @Override
+                    public void getOutline(View view, Outline outline) {
+                        if (roundRadius < 1) {
+                            outline.setRect((int) currentClipHorizontal, (int) currentClipVertical, (int) (view.getMeasuredWidth() - currentClipHorizontal), (int) (view.getMeasuredHeight() - currentClipVertical));
+                        } else {
+                            outline.setRoundRect((int) currentClipHorizontal, (int) currentClipVertical, (int) (view.getMeasuredWidth() - currentClipHorizontal), (int) (view.getMeasuredHeight() - currentClipVertical), roundRadius);
+                        }
                     }
-                }
-            });
-            setClipToOutline(true);
+                });
+                setClipToOutline(true);
+            }
         }
 
         if (isCamera) {
@@ -210,6 +214,23 @@ public class VoIPTextureView extends FrameLayout {
             Display display = ((WindowManager) getContext().getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
             renderer.setScreenRotation(display.getRotation());
         }
+    }
+
+    @Override
+    protected boolean drawChild(@NonNull Canvas canvas, View child, long drawingTime) {
+        if (AndroidUtilities.makingGlobalBlurBitmap && (child == renderer || child == blurRenderer)) {
+            return false;
+        }
+        return super.drawChild(canvas, child, drawingTime);
+    }
+
+    public View getPlaceholderView() {
+        if (placeholderView == null) {
+            placeholderView = new View(getContext());
+            addView(placeholderView, LayoutHelper.createFrameMatchParent());
+        }
+
+        return placeholderView;
     }
 
     public void setScreenshareMiniProgress(float progress, boolean value) {
@@ -261,6 +282,30 @@ public class VoIPTextureView extends FrameLayout {
     protected void dispatchDraw(Canvas canvas) {
         super.dispatchDraw(canvas);
 
+        if (AndroidUtilities.makingGlobalBlurBitmap) {
+            if (blurRenderer != null) {
+                canvas.save();
+                canvas.translate(blurRenderer.getX(), blurRenderer.getY());
+                Bitmap bitmap = blurRenderer.getBitmap();
+                if (bitmap != null) {
+                    canvas.scale((float) blurRenderer.getWidth() / bitmap.getWidth(), (float) blurRenderer.getHeight() / bitmap.getHeight());
+                    canvas.drawBitmap(bitmap, 0, 0, null);
+                }
+                canvas.restore();
+            }
+
+            if (renderer != null) {
+                canvas.save();
+                canvas.translate(renderer.getX(), renderer.getY());
+                Bitmap bitmap = renderer.getBitmap();
+                if (bitmap != null) {
+                    canvas.scale((float) renderer.getWidth() / bitmap.getWidth(), (float) renderer.getHeight() / bitmap.getHeight());
+                    canvas.drawBitmap(bitmap, 0, 0, null);
+                }
+                canvas.restore();
+            }
+        }
+
         if (imageView.getVisibility() == View.VISIBLE && renderer.isFirstFrameRendered()) {
             stubVisibleProgress -= 16f / 150f;
             if (stubVisibleProgress <= 0) {
@@ -276,7 +321,11 @@ public class VoIPTextureView extends FrameLayout {
     public void setRoundCorners(float radius) {
         if (roundRadius != radius) {
             roundRadius = radius;
-            invalidateOutline();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                invalidateOutline();
+            } else {
+                invalidate();
+            }
         }
     }
 
@@ -411,7 +460,9 @@ public class VoIPTextureView extends FrameLayout {
             if (clipToTexture && !animateWithParent && currentAnimation == null && !animateOnNextLayout) {
                 currentClipHorizontal = (getMeasuredWidth() - renderer.getMeasuredWidth()) / 2f;
                 currentClipVertical = (getMeasuredHeight() - renderer.getMeasuredHeight()) / 2f;
-                invalidateOutline();
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    invalidateOutline();
+                }
             }
         }
 
@@ -459,7 +510,9 @@ public class VoIPTextureView extends FrameLayout {
 
             currentClipVertical = clipVertical;
             currentClipHorizontal = clipHorizontal;
-            invalidateOutline();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                invalidateOutline();
+            }
             invalidate();
             float fromScaleFinal = aninateFromScale;
             float fromScaleBlurFinal = aninateFromScaleBlur;
@@ -473,7 +526,9 @@ public class VoIPTextureView extends FrameLayout {
                 animationProgress = (1f - v);
                 currentClipVertical = v * clipVertical;
                 currentClipHorizontal = v * clipHorizontal;
-                invalidateOutline();
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    invalidateOutline();
+                }
                 invalidate();
 
                 float s = fromScaleFinal * v + scaleTextureToFill * (1f - v);
@@ -546,7 +601,9 @@ public class VoIPTextureView extends FrameLayout {
         }
         currentClipHorizontal = horizontalClip;
         currentClipVertical = verticalClip;
-        invalidateOutline();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            invalidateOutline();
+        }
         invalidate();
 
     }

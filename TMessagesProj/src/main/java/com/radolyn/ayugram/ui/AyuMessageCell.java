@@ -1,5 +1,5 @@
 /*
- * This is the source code of AyuGram for Android.
+ * This is the source code of ChotkoGram for Android.
  *
  * We do not and cannot prevent the use of our code,
  * but be respectful and credit the original author.
@@ -39,7 +39,7 @@ public class AyuMessageCell extends ChatMessageCell {
 
             // ..open media otherwise
             if (!TextUtils.isEmpty(editedMessage.mediaPath)) {
-                AndroidUtilities.openForView(getMessageObject(), activity, null);
+                AndroidUtilities.openForView(getMessageObject(), activity, null, false);
             }
         });
 

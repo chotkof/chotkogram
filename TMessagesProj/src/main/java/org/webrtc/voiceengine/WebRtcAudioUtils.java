@@ -215,6 +215,9 @@ public final class WebRtcAudioUtils {
   }
 
   private static boolean isVolumeFixed(AudioManager audioManager) {
+    if (Build.VERSION.SDK_INT < 21) {
+      return false;
+    }
     return audioManager.isVolumeFixed();
   }
 

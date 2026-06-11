@@ -8,12 +8,14 @@ import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
 import android.view.View;
 import android.widget.FrameLayout;
 
 import androidx.annotation.NonNull;
+import androidx.core.view.ViewCompat;
 import androidx.dynamicanimation.animation.FloatValueHolder;
 import androidx.dynamicanimation.animation.SpringAnimation;
 import androidx.dynamicanimation.animation.SpringForce;
@@ -91,7 +93,7 @@ public abstract class RightSlidingDialogContainer extends FrameLayout {
                     fragment.onTransitionAnimationEnd(true, false);
                     openedProgress = 1f;
                     updateOpenAnimationProgress();
-                    openAnimationFinished();
+                    openAnimationFinished(false);
                     return;
                 }
                 notificationsLocker.lock();
@@ -115,7 +117,7 @@ public abstract class RightSlidingDialogContainer extends FrameLayout {
                         fragment.onTransitionAnimationEnd(true, false);
                         openedProgress = 1f;
                         updateOpenAnimationProgress();
-                        openAnimationFinished();
+                        openAnimationFinished(false);
                     }
                 });
                 openAnimator.setDuration(250);
@@ -125,6 +127,7 @@ public abstract class RightSlidingDialogContainer extends FrameLayout {
             }
 
             fragment.setPreviewDelegate(() -> finishPreview());
+            ViewCompat.requestApplyInsets(this);
         }
     }
 
@@ -278,7 +281,7 @@ public abstract class RightSlidingDialogContainer extends FrameLayout {
                 NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.needCheckSystemBarColors);
             }
 
-            openAnimationFinished();
+            openAnimationFinished(false);
 
             return;
         }
@@ -306,7 +309,7 @@ public abstract class RightSlidingDialogContainer extends FrameLayout {
                     NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.needCheckSystemBarColors);
                 }
 
-                openAnimationFinished();
+                openAnimationFinished(false);
 
             }
         });
@@ -403,7 +406,7 @@ public abstract class RightSlidingDialogContainer extends FrameLayout {
                                     return;
                                 }
                                 openAnimator = null;
-                                openAnimationFinished();
+                                openAnimationFinished(true);
                             }
                         });
                         openAnimator.setDuration(250);
@@ -449,7 +452,7 @@ public abstract class RightSlidingDialogContainer extends FrameLayout {
         }
     }
 
-    public void openAnimationFinished() {
+    public void openAnimationFinished(boolean backward) {
 
     }
 

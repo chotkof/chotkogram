@@ -15,8 +15,10 @@ import androidx.core.content.ContextCompat;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.DocumentObject;
+import org.telegram.messenger.Emoji;
 import org.telegram.messenger.ImageLocation;
 import org.telegram.messenger.LocaleController;
+import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SvgHelper;
 import org.telegram.messenger.UserConfig;
@@ -28,8 +30,6 @@ import org.telegram.ui.Components.CheckBox2;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.Reactions.ReactionsUtils;
 import org.telegram.ui.Components.Switch;
-
-import com.exteragram.messenger.ExteraConfig;
 
 public class AvailableReactionCell extends FrameLayout {
     private SimpleTextView textView;
@@ -46,9 +46,10 @@ public class AvailableReactionCell extends FrameLayout {
         this.canLock = canLock;
 
         textView = new SimpleTextView(context);
+        NotificationCenter.listenEmojiLoading(textView);
         textView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
         textView.setTextSize(16);
-        textView.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+        textView.setTypeface(AndroidUtilities.bold());
         textView.setMaxLines(1);
         textView.setMaxLines(1);
         textView.setGravity(LayoutHelper.getAbsoluteGravityStart() | Gravity.CENTER_VERTICAL);
@@ -67,7 +68,7 @@ public class AvailableReactionCell extends FrameLayout {
             addView(checkBox, LayoutHelper.createFrameRelatively(26, 26, Gravity.END | Gravity.CENTER_VERTICAL, 0, 0, 22, 0));
         } else {
             switchView = new Switch(context);
-            switchView.setColors(Theme.key_switchTrack, Theme.key_switchTrackChecked, Theme.key_windowBackgroundWhite, Theme.key_windowBackgroundWhite);
+            switchView.setColors(Theme.key_switchTrack, Theme.key_switchTrackChecked, Theme.key_switchTrackBlueThumb, Theme.key_switchTrackBlueThumbChecked);
             addView(switchView, LayoutHelper.createFrameRelatively(37, 20, Gravity.END | Gravity.CENTER_VERTICAL, 0, 0, 22, 0));
         }
         overlaySelectorView = new View(context);
@@ -92,7 +93,7 @@ public class AvailableReactionCell extends FrameLayout {
             animated = true;
         }
         this.react = react;
-        textView.setText(react.title);
+        textView.setText(Emoji.replaceEmoji(react.title, textView.getPaint().getFontMetricsInt(), false));
         SvgHelper.SvgDrawable svgThumb = DocumentObject.getSvgThumb(react.static_icon, Theme.key_windowBackgroundGray, 1.0f);
         imageView.setImage(ImageLocation.getForDocument(react.activate_animation), ReactionsUtils.ACTIVATE_ANIMATION_FILTER, "tgs", svgThumb, react);
 
@@ -153,7 +154,7 @@ public class AvailableReactionCell extends FrameLayout {
             l = pad;
         }
 
-        if (!ExteraConfig.disableDividers) canvas.drawLine(getPaddingLeft() + l, getHeight() - w, getWidth() - getPaddingRight() - r, getHeight() - w, Theme.dividerPaint);
+        canvas.drawLine(getPaddingLeft() + l, getHeight() - w, getWidth() - getPaddingRight() - r, getHeight() - w, Theme.dividerPaint);
     }
 
     @Override

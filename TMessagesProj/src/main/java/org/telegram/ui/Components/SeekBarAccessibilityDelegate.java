@@ -43,6 +43,9 @@ public abstract class SeekBarAccessibilityDelegate extends View.AccessibilityDel
     public boolean performAccessibilityActionInternal(@Nullable View host, int action, Bundle args) {
         if (action == AccessibilityNodeInfo.ACTION_SCROLL_FORWARD || action == AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD) {
             doScroll(host, action == AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD);
+            if (host != null) {
+                postAccessibilityEventRunnable(host);
+            }
             return true;
         }
         return false;
@@ -52,7 +55,7 @@ public abstract class SeekBarAccessibilityDelegate extends View.AccessibilityDel
         return performAccessibilityActionInternal(null, action, args);
     }
 
-    public void postAccessibilityEventRunnable(@NonNull View host) {
+    private void postAccessibilityEventRunnable(@NonNull View host) {
         if (!ViewCompat.isAttachedToWindow(host)) {
             return;
         }
@@ -62,9 +65,8 @@ public abstract class SeekBarAccessibilityDelegate extends View.AccessibilityDel
             host.addOnAttachStateChangeListener(onAttachStateChangeListener);
         } else {
             host.removeCallbacks(runnable);
-            host.removeOnAttachStateChangeListener(onAttachStateChangeListener);
         }
-        host.postDelayed(runnable, 200);
+        host.postDelayed(runnable, 400);
     }
 
     @Override
@@ -79,22 +81,18 @@ public abstract class SeekBarAccessibilityDelegate extends View.AccessibilityDel
         if (!TextUtils.isEmpty(contentDescription)) {
             info.setText(contentDescription);
         }
-        if (canScrollBackward(host)) {
-            info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_BACKWARD);
-        }
-        if (canScrollForward(host)) {
-            info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_FORWARD);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            if (canScrollBackward(host)) {
+                info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_BACKWARD);
+            }
+            if (canScrollForward(host)) {
+                info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_FORWARD);
+            }
         }
     }
 
     public final void onInitializeAccessibilityNodeInfoInternal(AccessibilityNodeInfo info) {
         onInitializeAccessibilityNodeInfoInternal(null, info);
-    }
-
-    @Override
-    public void onInitializeAccessibilityEvent(View host, AccessibilityEvent event) {
-        super.onInitializeAccessibilityEvent(host, event);
-        event.setClassName(SEEK_BAR_CLASS_NAME);
     }
 
     protected CharSequence getContentDescription(@Nullable View host) {

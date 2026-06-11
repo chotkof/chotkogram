@@ -55,6 +55,7 @@ public class ColorPicker extends FrameLayout {
     private Paint valueSliderPaint;
     private Paint circlePaint;
     private Paint linePaint;
+    private Drawable circleDrawable;
 
     private boolean myMessagesColor;
 
@@ -194,7 +195,7 @@ public class ColorPicker extends FrameLayout {
         @Override
         public void onInitializeAccessibilityNodeInfo(AccessibilityNodeInfo info) {
             super.onInitializeAccessibilityNodeInfo(info);
-            info.setText(LocaleController.getString("ColorPickerMainColor", R.string.ColorPickerMainColor));
+            info.setText(LocaleController.getString(R.string.ColorPickerMainColor));
             info.setClassName(Button.class.getName());
             info.setChecked(checked);
             info.setCheckable(true);
@@ -209,6 +210,8 @@ public class ColorPicker extends FrameLayout {
         colorEditText = new EditTextBoldCursor[2];
 
         setWillNotDraw(false);
+
+        circleDrawable = context.getResources().getDrawable(R.drawable.knob_shadow).mutate();
 
         circlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         colorWheelPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
@@ -473,7 +476,7 @@ public class ColorPicker extends FrameLayout {
             });
             colorsAnimator.start();
         });
-        addButton.setContentDescription(LocaleController.getString("Add", R.string.Add));
+        addButton.setContentDescription(LocaleController.getString(R.string.Add));
         addView(addButton, LayoutHelper.createFrame(30, 30, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 36, 1, 0, 0));
 
         clearButton = new ImageView(getContext()) {
@@ -561,12 +564,12 @@ public class ColorPicker extends FrameLayout {
             });
             colorsAnimator.start();
         });
-        clearButton.setContentDescription(LocaleController.getString("ClearButton", R.string.ClearButton));
+        clearButton.setContentDescription(LocaleController.getString(R.string.ClearButton));
         addView(clearButton, LayoutHelper.createFrame(30, 30, Gravity.TOP | Gravity.LEFT, 97, 1, 0, 0));
 
         resetButton = new TextView(context);
         resetButton.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
-        resetButton.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+        resetButton.setTypeface(AndroidUtilities.bold());
         resetButton.setGravity(Gravity.CENTER);
         resetButton.setPadding(AndroidUtilities.dp(4), 0, AndroidUtilities.dp(4), 0);
         resetButton.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
@@ -584,10 +587,10 @@ public class ColorPicker extends FrameLayout {
             menuItem = new ActionBarMenuItem(context, null, 0, getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
             menuItem.setLongClickEnabled(false);
             menuItem.setIcon(R.drawable.ic_ab_other);
-            menuItem.setContentDescription(LocaleController.getString("AccDescrMoreOptions", R.string.AccDescrMoreOptions));
-            menuItem.addSubItem(item_edit, R.drawable.msg_edit, LocaleController.getString("OpenInEditor", R.string.OpenInEditor));
-            menuItem.addSubItem(item_share, R.drawable.msg_share, LocaleController.getString("ShareTheme", R.string.ShareTheme));
-            menuItem.addSubItem(item_delete, R.drawable.msg_delete, LocaleController.getString("DeleteTheme", R.string.DeleteTheme));
+            menuItem.setContentDescription(LocaleController.getString(R.string.AccDescrMoreOptions));
+            menuItem.addSubItem(item_edit, R.drawable.msg_edit, LocaleController.getString(R.string.OpenInEditor));
+            menuItem.addSubItem(item_share, R.drawable.msg_share, LocaleController.getString(R.string.ShareTheme));
+            menuItem.addSubItem(item_delete, R.drawable.msg_delete, LocaleController.getString(R.string.DeleteTheme));
             menuItem.setMenuYOffset(-AndroidUtilities.dp(80));
             menuItem.setSubMenuOpenSide(2);
             menuItem.setDelegate(id -> {
@@ -764,9 +767,9 @@ public class ColorPicker extends FrameLayout {
 
     private void drawPointerArrow(Canvas canvas, int x, int y, int color, boolean small) {
         int side = AndroidUtilities.dp(small ? 12 : 16);
+        circleDrawable.setBounds(x - side, y - side, x + side, y + side);
+        circleDrawable.draw(canvas);
 
-        circlePaint.setColor(0xff707070);
-        canvas.drawCircle(x, y, AndroidUtilities.dp(small ? 11.5f : 15.5f), circlePaint);
         circlePaint.setColor(0xffffffff);
         canvas.drawCircle(x, y, AndroidUtilities.dp(small ? 11 : 15), circlePaint);
         circlePaint.setColor(color);

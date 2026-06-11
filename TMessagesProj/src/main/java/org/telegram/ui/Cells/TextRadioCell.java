@@ -27,8 +27,6 @@ import org.telegram.ui.Components.RadioButton;
 
 import java.util.ArrayList;
 
-import com.exteragram.messenger.ExteraConfig;
-
 public class TextRadioCell extends FrameLayout {
 
     private TextView textView;
@@ -75,7 +73,6 @@ public class TextRadioCell extends FrameLayout {
         textView = new TextView(context);
         textView.setTextColor(Theme.getColor(dialog ? Theme.key_dialogTextBlack : Theme.key_windowBackgroundWhiteBlackText));
         textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
-        textView.setTypeface(AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_REGULAR));
         textView.setLines(1);
         textView.setMaxLines(1);
         textView.setSingleLine(true);
@@ -86,7 +83,6 @@ public class TextRadioCell extends FrameLayout {
         valueTextView = new TextView(context);
         valueTextView.setTextColor(Theme.getColor(dialog ? Theme.key_dialogIcon : Theme.key_windowBackgroundWhiteGrayText2));
         valueTextView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
-        valueTextView.setTypeface(AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_REGULAR));
         valueTextView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
         valueTextView.setLines(1);
         valueTextView.setMaxLines(1);
@@ -287,7 +283,7 @@ public class TextRadioCell extends FrameLayout {
             float animatedRad = rad * animationProgress;
             canvas.drawCircle(cx, cy, animatedRad, animationPaint);
         }
-        if (needDivider && !ExteraConfig.disableDividers) {
+        if (needDivider) {
             canvas.drawLine(LocaleController.isRTL ? 0 : AndroidUtilities.dp(64), getMeasuredHeight() - 1, getMeasuredWidth() - (LocaleController.isRTL ? AndroidUtilities.dp(64) : 0), getMeasuredHeight() - 1, Theme.dividerPaint);
         }
     }
@@ -297,7 +293,7 @@ public class TextRadioCell extends FrameLayout {
         super.onInitializeAccessibilityNodeInfo(info);
         info.setCheckable(true);
         info.setChecked(radioButton.isChecked());
-        info.setContentDescription(radioButton.isChecked() ? LocaleController.getString("NotificationsOn", R.string.NotificationsOn) : LocaleController.getString("NotificationsOff", R.string.NotificationsOff));
+        info.setContentDescription(radioButton.isChecked() ? LocaleController.getString(R.string.NotificationsOn) : LocaleController.getString(R.string.NotificationsOff));
         StringBuilder sb = new StringBuilder();
         sb.append(textView.getText());
         if (!TextUtils.isEmpty(valueTextView.getText())) {

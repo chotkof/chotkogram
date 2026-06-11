@@ -302,8 +302,20 @@ public:
             for (auto &videoSegment : segment->video) {
                 videoSegment->isPlaying = true;
                 cancelPendingVideoQualityUpdate(videoSegment);
-
-                auto frame = videoSegment->part->getFrameAtRelativeTimestamp(relativeTimestamp);
+                
+                std::shared_ptr<VideoStreamingSharedState> sharedVideoState;
+                auto endpointId = videoSegment->part->getActiveEndpointId();
+                if (endpointId.has_value()) {
+                    auto it = _sharedVideoStateByEndpointId.find(endpointId.value());
+                    if (it != _sharedVideoStateByEndpointId.end()) {
+                        sharedVideoState = it->second;
+                    } else {
+                        sharedVideoState = std::make_shared<VideoStreamingSharedState>();
+                        _sharedVideoStateByEndpointId.insert(std::make_pair(endpointId.value(), sharedVideoState));
+                    }
+                }
+                
+                auto frame = videoSegment->part->getFrameAtRelativeTimestamp(sharedVideoState.get(), relativeTimestamp);
                 if (frame) {
                     if (videoSegment->lastFramePts != frame->pts) {
                         videoSegment->lastFramePts = frame->pts;
@@ -324,8 +336,20 @@ public:
 
             for (auto &videoSegment : segment->unified) {
                 videoSegment->isPlaying = true;
+                
+                absl::optional<std::string> endpointId = "unified";
+                std::shared_ptr<VideoStreamingSharedState> sharedVideoState;
+                if (endpointId.has_value()) {
+                    auto it = _sharedVideoStateByEndpointId.find(endpointId.value());
+                    if (it != _sharedVideoStateByEndpointId.end()) {
+                        sharedVideoState = it->second;
+                    } else {
+                        sharedVideoState = std::make_shared<VideoStreamingSharedState>();
+                        _sharedVideoStateByEndpointId.insert(std::make_pair(endpointId.value(), sharedVideoState));
+                    }
+                }
 
-                auto frame = videoSegment->videoPart->getFrameAtRelativeTimestamp(relativeTimestamp);
+                auto frame = videoSegment->videoPart->getFrameAtRelativeTimestamp(sharedVideoState.get(), relativeTimestamp);
                 if (frame) {
                     if (videoSegment->lastFramePts != frame->pts) {
                         videoSegment->lastFramePts = frame->pts;
@@ -402,7 +426,7 @@ public:
             } else if (segment->unifiedAudio) {
                 const auto available = [&] {
                     _audioDataMutex.Lock();
-                    const auto result = (_audioRingBuffer.availableForWriting() >= 480);
+                    const auto result = (_audioRingBuffer.availableForWriting() >= 480 * _audioRingBufferNumChannels);
                     _audioDataMutex.Unlock();
 
                     return result;
@@ -412,7 +436,7 @@ public:
                     if (audioChannels.empty()) {
                         break;
                     }
-
+                    
                     if (audioChannels[0].numSamples < 480) {
                         RTC_LOG(LS_INFO) << "render: got less than 10ms of audio data (" << audioChannels[0].numSamples << " samples)";
                     }
@@ -507,6 +531,17 @@ public:
                 if (!segment->unified.empty() && segment->unified[0]->videoPart->hasRemainingFrames()) {
                     RTC_LOG(LS_INFO) << "render: discarding video frames at the end of a segment (displayed " << segment->unified[0]->_displayedFrames << " frames)";
                 }
+
+                _availableSegments.erase(_availableSegments.begin());
+            } else if (
+                _availableSegments.size() > 1 &&
+                (!segment->audio || segment->audio->getRemainingMilliseconds() <= 0) &&
+                (segment->video.empty() || !segment->video[0]->part->getActiveEndpointId()) &&
+                (segment->unified.empty() || !segment->unified[0]->videoPart->hasRemainingFrames()) &&
+                (!segment->unifiedAudio || !segment->unifiedAudio->hasRemainingFrames())
+            ) {
+                _playbackReferenceTimestamp += segment->duration;
+                _waitForBufferredMillisecondsBeforeRendering = absl::nullopt;
 
                 _availableSegments.erase(_availableSegments.begin());
             }
@@ -1029,7 +1064,7 @@ private:
     int64_t _playbackReferenceTimestamp = 0;
 
     const int _audioRingBufferNumChannels = 2;
-    const size_t _audioDataRingBufferMaxSize = 4800 * 2;
+    const size_t _audioDataRingBufferMaxSize = 4800 * 8;
     webrtc::Mutex _audioDataMutex;
     SampleRingBuffer _audioRingBuffer;
     std::vector<int16_t> _tempAudioBuffer;
@@ -1039,6 +1074,7 @@ private:
 
     std::map<uint32_t, double> _volumeBySsrc;
     std::vector<StreamingMediaContext::VideoChannel> _activeVideoChannels;
+    std::map<std::string, std::shared_ptr<VideoStreamingSharedState>> _sharedVideoStateByEndpointId;
     std::map<std::string, std::vector<std::weak_ptr<rtc::VideoSinkInterface<webrtc::VideoFrame>>>> _videoSinks;
 
     std::map<std::string, int32_t> _currentEndpointMapping;

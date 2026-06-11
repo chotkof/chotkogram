@@ -82,13 +82,15 @@ public class PatternCell extends BackupImageView implements DownloadController.F
 
         TAG = DownloadController.getInstance(currentAccount).generateObserverTag();
 
-        setOutlineProvider(new ViewOutlineProvider() {
-            @Override
-            public void getOutline(View view, Outline outline) {
-                outline.setRoundRect(AndroidUtilities.dp(1), AndroidUtilities.dp(1), view.getMeasuredWidth() - AndroidUtilities.dp(1), view.getMeasuredHeight() - AndroidUtilities.dp(1), AndroidUtilities.dp(6));
-            }
-        });
-        setClipToOutline(true);
+        if (Build.VERSION.SDK_INT >= 21) {
+            setOutlineProvider(new ViewOutlineProvider() {
+                @Override
+                public void getOutline(View view, Outline outline) {
+                    outline.setRoundRect(AndroidUtilities.dp(1), AndroidUtilities.dp(1), view.getMeasuredWidth() - AndroidUtilities.dp(1), view.getMeasuredHeight() - AndroidUtilities.dp(1), AndroidUtilities.dp(6));
+                }
+            });
+            setClipToOutline(true);
+        }
     }
 
     public void setPattern(TLRPC.TL_wallPaper wallPaper) {

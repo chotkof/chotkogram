@@ -8,6 +8,8 @@
 
 package org.telegram.ui.Components;
 
+import static org.telegram.messenger.LocaleController.getString;
+
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
@@ -19,7 +21,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
-import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
@@ -40,6 +41,7 @@ import android.view.WindowManager;
 import android.view.animation.DecelerateInterpolator;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
+import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -59,6 +61,7 @@ import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.R;
 import org.telegram.messenger.Utilities;
 import org.telegram.messenger.browser.Browser;
+import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.BottomSheet;
 import org.telegram.ui.ActionBar.Theme;
@@ -265,7 +268,9 @@ public class EmbedBottomSheet extends BottomSheet {
         fullscreenVideoContainer = new FrameLayout(context);
         fullscreenVideoContainer.setKeepScreenOn(true);
         fullscreenVideoContainer.setBackgroundColor(0xff000000);
-        fullscreenVideoContainer.setFitsSystemWindows(true);
+        if (Build.VERSION.SDK_INT >= 21) {
+            fullscreenVideoContainer.setFitsSystemWindows(true);
+        }
         fullscreenVideoContainer.setOnTouchListener((v, event) -> true);
         container.addView(fullscreenVideoContainer, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
         fullscreenVideoContainer.setVisibility(View.INVISIBLE);
@@ -307,6 +312,18 @@ public class EmbedBottomSheet extends BottomSheet {
 
         webView = new WebView(context) {
             @Override
+            protected void onAttachedToWindow() {
+                AndroidUtilities.checkAndroidTheme(context, true);
+                super.onAttachedToWindow();
+            }
+
+            @Override
+            protected void onDetachedFromWindow() {
+                AndroidUtilities.checkAndroidTheme(context, false);
+                super.onDetachedFromWindow();
+            }
+
+            @Override
             public boolean onTouchEvent(MotionEvent event) {
                 boolean result = super.onTouchEvent(event);
                 if (result) {
@@ -321,11 +338,15 @@ public class EmbedBottomSheet extends BottomSheet {
         };
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setDomStorageEnabled(true);
-        webView.getSettings().setMediaPlaybackRequiresUserGesture(false);
+        if (Build.VERSION.SDK_INT >= 17) {
+            webView.getSettings().setMediaPlaybackRequiresUserGesture(false);
+        }
 
-        webView.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-        CookieManager cookieManager = CookieManager.getInstance();
-        cookieManager.setAcceptThirdPartyCookies(webView, true);
+        if (Build.VERSION.SDK_INT >= 21) {
+            webView.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+            CookieManager cookieManager = CookieManager.getInstance();
+            cookieManager.setAcceptThirdPartyCookies(webView, true);
+        }
 
         webView.setWebChromeClient(new WebChromeClient() {
 
@@ -364,14 +385,27 @@ public class EmbedBottomSheet extends BottomSheet {
                 }
                 customView = null;
             }
-
-            @Override
-            public Bitmap getDefaultVideoPoster() {
-                return Bitmap.createBitmap(50, 50, Bitmap.Config.ARGB_8888);
-            }
         });
 
         webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
+                try {
+                    if (!AndroidUtilities.isSafeToShow(getContext())) {
+                        return true;
+                    }
+                    new AlertDialog.Builder(getContext(), resourcesProvider)
+                            .setTitle(getString(R.string.ChromeCrashTitle))
+                            .setMessage(AndroidUtilities.replaceSingleTag(getString(R.string.ChromeCrashMessage), () -> Browser.openUrl(getContext(), "https://play.google.com/store/apps/details?id=com.google.android.webview")))
+                            .setPositiveButton(getString(R.string.OK), null)
+                            .show();
+                    return true;
+                } catch (Exception e) {
+                    FileLog.e(e);
+                    return false;
+                }
+            }
+
             @Override
             public void onLoadResource(WebView view, String url) {
                 super.onLoadResource(view, url);
@@ -380,7 +414,7 @@ public class EmbedBottomSheet extends BottomSheet {
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
-                if (!isYouTube) {
+                if (!isYouTube || Build.VERSION.SDK_INT < 17) {
                     progressBar.setVisibility(View.INVISIBLE);
                     progressBarBlackBackground.setVisibility(View.INVISIBLE);
                     pipButton.setEnabled(true);
@@ -502,7 +536,7 @@ public class EmbedBottomSheet extends BottomSheet {
                         View controlsView = videoView.getControlsView();
                         ImageView textureImageView = videoView.getTextureImageView();
 
-                        Rect rect = PipVideoOverlay.getPipRect(true, aspectRatio);
+                        RectOld rect = PipVideoOverlay.getPipRect(true, aspectRatio);
 
                         float scale = rect.width / textureView.getWidth();
 
@@ -553,7 +587,7 @@ public class EmbedBottomSheet extends BottomSheet {
 
                     if (animated && PipVideoOverlay.IS_TRANSITION_ANIMATION_SUPPORTED) {
                         setOnShowListener(onShowListener);
-                        Rect rect = PipVideoOverlay.getPipRect(false, aspectRatio);
+                        RectOld rect = PipVideoOverlay.getPipRect(false, aspectRatio);
 
                         TextureView textureView = videoView.getTextureView();
                         ImageView textureImageView = videoView.getTextureImageView();
@@ -682,7 +716,7 @@ public class EmbedBottomSheet extends BottomSheet {
             textView.setTextColor(Theme.getColor(Theme.key_dialogTextBlack));
             textView.setText(description);
             textView.setSingleLine(true);
-            textView.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+            textView.setTypeface(AndroidUtilities.bold());
             textView.setEllipsize(TextUtils.TruncateAt.END);
             textView.setPadding(AndroidUtilities.dp(18), 0, AndroidUtilities.dp(18), 0);
             containerLayout.addView(textView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.BOTTOM, 0, 0, 0, 48 + 9 + 20));
@@ -719,8 +753,8 @@ public class EmbedBottomSheet extends BottomSheet {
         textView.setEllipsize(TextUtils.TruncateAt.END);
         textView.setBackgroundDrawable(Theme.createSelectorDrawable(Theme.getColor(Theme.key_dialogButtonSelector), 0));
         textView.setPadding(AndroidUtilities.dp(18), 0, AndroidUtilities.dp(18), 0);
-        textView.setText(LocaleController.getString("Close", R.string.Close).toUpperCase());
-        textView.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+        textView.setText(LocaleController.getString(R.string.Close).toUpperCase());
+        textView.setTypeface(AndroidUtilities.bold());
         frameLayout.addView(textView, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.MATCH_PARENT, Gravity.TOP | Gravity.LEFT));
         textView.setOnClickListener(v -> dismiss());
 
@@ -731,7 +765,7 @@ public class EmbedBottomSheet extends BottomSheet {
         pipButton = new ImageView(context);
         pipButton.setScaleType(ImageView.ScaleType.CENTER);
         pipButton.setImageResource(R.drawable.ic_goinline);
-        pipButton.setContentDescription(LocaleController.getString("AccDescrPipMode", R.string.AccDescrPipMode));
+        pipButton.setContentDescription(LocaleController.getString(R.string.AccDescrPipMode));
         pipButton.setEnabled(false);
         pipButton.setAlpha(0.5f);
         pipButton.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_dialogTextBlue4), PorterDuff.Mode.MULTIPLY));
@@ -814,7 +848,7 @@ public class EmbedBottomSheet extends BottomSheet {
         ImageView copyButton = new ImageView(context);
         copyButton.setScaleType(ImageView.ScaleType.CENTER);
         copyButton.setImageResource(R.drawable.msg_copy);
-        copyButton.setContentDescription(LocaleController.getString("CopyLink", R.string.CopyLink));
+        copyButton.setContentDescription(LocaleController.getString(R.string.CopyLink));
         copyButton.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_dialogTextBlue4), PorterDuff.Mode.MULTIPLY));
         copyButton.setBackgroundDrawable(Theme.createSelectorDrawable(Theme.getColor(Theme.key_dialogButtonSelector), 0));
         imageButtonsContainer.addView(copyButton, LayoutHelper.createFrame(48, 48, Gravity.TOP | Gravity.LEFT));
@@ -828,8 +862,8 @@ public class EmbedBottomSheet extends BottomSheet {
         copyTextButton.setEllipsize(TextUtils.TruncateAt.END);
         copyTextButton.setBackgroundDrawable(Theme.createSelectorDrawable(Theme.getColor(Theme.key_dialogButtonSelector), 0));
         copyTextButton.setPadding(AndroidUtilities.dp(18), 0, AndroidUtilities.dp(18), 0);
-        copyTextButton.setText(LocaleController.getString("Copy", R.string.Copy).toUpperCase());
-        copyTextButton.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+        copyTextButton.setText(LocaleController.getString(R.string.Copy).toUpperCase());
+        copyTextButton.setTypeface(AndroidUtilities.bold());
         linearLayout.addView(copyTextButton, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.MATCH_PARENT, Gravity.TOP | Gravity.LEFT));
         copyTextButton.setOnClickListener(copyClickListener);
 
@@ -841,8 +875,8 @@ public class EmbedBottomSheet extends BottomSheet {
         openInButton.setEllipsize(TextUtils.TruncateAt.END);
         openInButton.setBackgroundDrawable(Theme.createSelectorDrawable(Theme.getColor(Theme.key_dialogButtonSelector), 0));
         openInButton.setPadding(AndroidUtilities.dp(18), 0, AndroidUtilities.dp(18), 0);
-        openInButton.setText(LocaleController.getString("OpenInBrowser", R.string.OpenInBrowser).toUpperCase());
-        openInButton.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+        openInButton.setText(LocaleController.getString(R.string.OpenInBrowser).toUpperCase());
+        openInButton.setTypeface(AndroidUtilities.bold());
         linearLayout.addView(openInButton, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.MATCH_PARENT, Gravity.TOP | Gravity.LEFT));
         openInButton.setOnClickListener(v -> {
             Browser.openUrl(parentActivity, openUrl);
@@ -883,7 +917,9 @@ public class EmbedBottomSheet extends BottomSheet {
                         if (currentYoutubeId != null) {
                             progressBarBlackBackground.setVisibility(View.VISIBLE);
                             isYouTube = true;
-                            webView.addJavascriptInterface(new YoutubeProxy(), "YoutubeProxy");
+                            if (Build.VERSION.SDK_INT >= 17) {
+                                webView.addJavascriptInterface(new YoutubeProxy(), "YoutubeProxy");
+                            }
                             int seekToTime = 0;
                             if (openUrl != null) {
                                 try {
@@ -981,7 +1017,15 @@ public class EmbedBottomSheet extends BottomSheet {
     }
 
     private void runJsCode(String code) {
-        webView.evaluateJavascript(code, null);
+        if (Build.VERSION.SDK_INT >= 21) {
+            webView.evaluateJavascript(code, null);
+        } else {
+            try {
+                webView.loadUrl("javascript:" + code);
+            } catch (Exception e) {
+                FileLog.e(e);
+            }
+        }
     }
 
     public boolean checkInlinePermissions() {

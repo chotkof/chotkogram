@@ -44,8 +44,6 @@ import org.telegram.messenger.AndroidUtilities;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.exteragram.messenger.ExteraConfig;
-
 /**
  * This is a utility class to add swipe to dismiss and drag & drop support to RecyclerView.
  * <p>
@@ -694,7 +692,9 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
             mSelected = selected;
 
             if (actionState == ACTION_STATE_DRAG) {
-                mSelected.itemView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+                try {
+                    mSelected.itemView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);
+                } catch (Exception ignore) {}
             }
         }
         final ViewParent rvParent = mRecyclerView.getParent();
@@ -1305,7 +1305,29 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
     }
 
     private void addChildDrawingOrderCallback() {
-        return; // we use elevation on Lollipop
+        if (Build.VERSION.SDK_INT >= 21) {
+            return; // we use elevation on Lollipop
+        }
+        if (mChildDrawingOrderCallback == null) {
+            mChildDrawingOrderCallback = new RecyclerView.ChildDrawingOrderCallback() {
+                @Override
+                public int onGetChildDrawingOrder(int childCount, int i) {
+                    if (mOverdrawChild == null) {
+                        return i;
+                    }
+                    int childPosition = mOverdrawChildPosition;
+                    if (childPosition == -1) {
+                        childPosition = mRecyclerView.indexOfChild(mOverdrawChild);
+                        mOverdrawChildPosition = childPosition;
+                    }
+                    if (i == childCount - 1) {
+                        return childPosition;
+                    }
+                    return i < childPosition ? i : i + 1;
+                }
+            };
+        }
+        mRecyclerView.setChildDrawingOrderCallback(mChildDrawingOrderCallback);
     }
 
     @SuppressWarnings("WeakerAccess") /* synthetic access */

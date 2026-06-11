@@ -23,7 +23,6 @@ import android.text.StaticLayout;
 import android.text.TextPaint;
 import android.text.TextUtils;
 import android.util.Pair;
-import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -324,7 +323,7 @@ public class VideoPlayerSeekBar {
                     float position = seconds * 1000L / (float) videoDuration;
                     String label = link.label;
                     SpannableStringBuilder builder = new SpannableStringBuilder(label);
-                    Emoji.replaceEmoji(builder, timestampLabelPaint.getFontMetricsInt(), AndroidUtilities.dp(14), false);
+                    Emoji.replaceEmoji(builder, timestampLabelPaint.getFontMetricsInt(), false);
                     timestamps.add(new Pair<>(position, builder));
                 }
             }
@@ -598,9 +597,7 @@ public class VideoPlayerSeekBar {
         if (timestampIndex != currentTimestamp) {
             timestampLabel[1] = timestampLabel[0];
             if (pressed) {
-                try {
-                    parentView.performHapticFeedback(HapticFeedbackConstants.TEXT_HANDLE_MOVE, HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING);
-                } catch (Exception ignore) {}
+                AndroidUtilities.vibrateCursor(parentView);
             }
             if (timestampIndex >= 0 && timestampIndex < timestamps.size()) {
                 CharSequence label = timestamps.get(timestampIndex).second;

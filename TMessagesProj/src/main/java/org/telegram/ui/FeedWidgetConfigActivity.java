@@ -31,14 +31,14 @@ public class FeedWidgetConfigActivity extends ExternalActionActivity {
             args.putBoolean("allowSwitchAccount", true);
             args.putBoolean("checkCanWrite", false);
             DialogsActivity fragment = new DialogsActivity(args);
-            fragment.setDelegate((fragment1, dids, message, param, topicsFragment) -> {
+            fragment.setDelegate((fragment1, dids, message, param, notify, scheduleDate, scheduleRepeatPeriod, topicsFragment) -> {
                 AccountInstance.getInstance(fragment1.getCurrentAccount()).getMessagesStorage().putWidgetDialogs(creatingAppWidgetId, dids);
 
                 SharedPreferences preferences = FeedWidgetConfigActivity.this.getSharedPreferences("shortcut_widget", Activity.MODE_PRIVATE);
                 SharedPreferences.Editor editor = preferences.edit();
                 editor.putInt("account" + creatingAppWidgetId, fragment1.getCurrentAccount());
                 editor.putLong("dialogId" + creatingAppWidgetId, dids.get(0).dialogId);
-                editor.apply();
+                editor.commit();
 
                 AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(FeedWidgetConfigActivity.this);
                 FeedWidgetProvider.updateWidget(FeedWidgetConfigActivity.this, appWidgetManager, creatingAppWidgetId);

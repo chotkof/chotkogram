@@ -19,7 +19,6 @@ import android.text.Spanned;
 import android.text.StaticLayout;
 import android.text.TextPaint;
 import android.util.Pair;
-import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -39,9 +38,16 @@ public class SeekBar {
         default void onSeekBarContinuousDrag(float progress) {
 
         }
-
         default void onSeekBarPressed() {}
         default void onSeekBarReleased() {}
+
+        default boolean isSeekBarDragAllowed() {
+            return true;
+        }
+
+        default boolean reverseWaveform() {
+            return false;
+        }
     }
 
     private static Paint paint;
@@ -332,7 +338,7 @@ public class SeekBar {
                         float position = seconds * 1000L / (float) videoDuration;
                         String label = link.label;
                         SpannableStringBuilder builder = new SpannableStringBuilder(label);
-                        Emoji.replaceEmoji(builder, timestampLabelPaint.getFontMetricsInt(), AndroidUtilities.dp(14), false);
+                        Emoji.replaceEmoji(builder, timestampLabelPaint.getFontMetricsInt(), false);
                         timestamps.add(new Pair<>(position, link));
                     }
                 }
@@ -458,10 +464,8 @@ public class SeekBar {
         lastWidth = width;
 
         if (timestampIndex != currentTimestamp) {
-            if (pressed && parentView != null) {
-                try {
-                    parentView.performHapticFeedback(HapticFeedbackConstants.TEXT_HANDLE_MOVE, HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING);
-                } catch (Exception ignore) {}
+            if (pressed) {
+                AndroidUtilities.vibrateCursor(parentView);
             }
             currentTimestamp = timestampIndex;
             if (currentTimestamp >= 0 && currentTimestamp < timestamps.size()) {

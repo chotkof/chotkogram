@@ -66,7 +66,7 @@ import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.EditTextBoldCursor;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.QRCodeBottomSheet;
-import org.telegram.ui.Components.RLottieDrawable;
+import org.telegram.ui.Components.SectionsScrollView;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
@@ -195,7 +195,7 @@ public class ProxySettingsActivity extends BaseFragment {
 
     @Override
     public View createView(Context context) {
-        actionBar.setTitle(LocaleController.getString("ProxyDetails", R.string.ProxyDetails));
+        actionBar.setTitle(LocaleController.getString(R.string.ProxyDetails));
         actionBar.setBackButtonImage(R.drawable.ic_ab_back);
         actionBar.setAllowOverlayTitle(false);
         if (AndroidUtilities.isTablet()) {
@@ -243,7 +243,7 @@ public class ProxySettingsActivity extends BaseFragment {
                         editor.putString("proxy_secret", currentProxyInfo.secret);
                         ConnectionsManager.setProxySettings(enabled, currentProxyInfo.address, currentProxyInfo.port, currentProxyInfo.username, currentProxyInfo.password, currentProxyInfo.secret);
                     }
-                    editor.apply();
+                    editor.commit();
 
                     NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.proxySettingsChanged);
 
@@ -253,12 +253,14 @@ public class ProxySettingsActivity extends BaseFragment {
         });
 
         doneItem = actionBar.createMenu().addItemWithWidth(done_button, R.drawable.ic_ab_done, AndroidUtilities.dp(56));
-        doneItem.setContentDescription(LocaleController.getString("Done", R.string.Done));
+        doneItem.setContentDescription(LocaleController.getString(R.string.Done));
 
         fragmentView = new FrameLayout(context);
         FrameLayout frameLayout = (FrameLayout) fragmentView;
         fragmentView.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundGray));
 
+//        linearLayout2 = new SectionsScrollView.SectionsLinearLayout(context);
+//        scrollView = new SectionsScrollView(context, linearLayout2, resourceProvider);
         scrollView = new ScrollView(context);
         scrollView.setFillViewport(true);
         AndroidUtilities.setScrollViewEdgeEffectColor(scrollView, Theme.getColor(Theme.key_actionBarDefault));
@@ -275,9 +277,9 @@ public class ProxySettingsActivity extends BaseFragment {
             typeCell[a].setBackground(Theme.getSelectorDrawable(true));
             typeCell[a].setTag(a);
             if (a == 0) {
-                typeCell[a].setText(LocaleController.getString("UseProxySocks5", R.string.UseProxySocks5), a == currentType, true);
+                typeCell[a].setText(LocaleController.getString(R.string.UseProxySocks5), a == currentType, true);
             } else {
-                typeCell[a].setText(LocaleController.getString("UseProxyTelegram", R.string.UseProxyTelegram), a == currentType, false);
+                typeCell[a].setText(LocaleController.getString(R.string.UseProxyTelegram), a == currentType, false);
             }
             linearLayout2.addView(typeCell[a], LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 50));
             typeCell[a].setOnClickListener(typeCellClickListener);
@@ -289,9 +291,11 @@ public class ProxySettingsActivity extends BaseFragment {
         inputFieldsContainer = new LinearLayout(context);
         inputFieldsContainer.setOrientation(LinearLayout.VERTICAL);
         inputFieldsContainer.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
-        // bring to front for transitions
-        inputFieldsContainer.setElevation(AndroidUtilities.dp(1f));
-        inputFieldsContainer.setOutlineProvider(null);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            // bring to front for transitions
+            inputFieldsContainer.setElevation(AndroidUtilities.dp(1f));
+            inputFieldsContainer.setOutlineProvider(null);
+        }
         linearLayout2.addView(inputFieldsContainer, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
         inputFields = new EditTextBoldCursor[5];
@@ -391,23 +395,23 @@ public class ProxySettingsActivity extends BaseFragment {
             inputFields[a].setImeOptions(EditorInfo.IME_ACTION_NEXT | EditorInfo.IME_FLAG_NO_EXTRACT_UI);
             switch (a) {
                 case FIELD_IP:
-                    inputFields[a].setHintText(LocaleController.getString("UseProxyAddress", R.string.UseProxyAddress));
+                    inputFields[a].setHintText(LocaleController.getString(R.string.UseProxyAddress));
                     inputFields[a].setText(currentProxyInfo.address);
                     break;
                 case FIELD_PASSWORD:
-                    inputFields[a].setHintText(LocaleController.getString("UseProxyPassword", R.string.UseProxyPassword));
+                    inputFields[a].setHintText(LocaleController.getString(R.string.UseProxyPassword));
                     inputFields[a].setText(currentProxyInfo.password);
                     break;
                 case FIELD_PORT:
-                    inputFields[a].setHintText(LocaleController.getString("UseProxyPort", R.string.UseProxyPort));
+                    inputFields[a].setHintText(LocaleController.getString(R.string.UseProxyPort));
                     inputFields[a].setText("" + currentProxyInfo.port);
                     break;
                 case FIELD_USER:
-                    inputFields[a].setHintText(LocaleController.getString("UseProxyUsername", R.string.UseProxyUsername));
+                    inputFields[a].setHintText(LocaleController.getString(R.string.UseProxyUsername));
                     inputFields[a].setText(currentProxyInfo.username);
                     break;
                 case FIELD_SECRET:
-                    inputFields[a].setHintText(LocaleController.getString("UseProxySecret", R.string.UseProxySecret));
+                    inputFields[a].setHintText(LocaleController.getString(R.string.UseProxySecret));
                     inputFields[a].setText(currentProxyInfo.secret);
                     break;
             }
@@ -436,9 +440,9 @@ public class ProxySettingsActivity extends BaseFragment {
             bottomCells[i] = new TextInfoPrivacyCell(context);
             bottomCells[i].setBackground(Theme.getThemedDrawableByKey(context, R.drawable.greydivider_bottom, Theme.key_windowBackgroundGrayShadow));
             if (i == 0) {
-                bottomCells[i].setText(LocaleController.getString("UseProxyInfo", R.string.UseProxyInfo));
+                bottomCells[i].setText(LocaleController.getString(R.string.UseProxyInfo));
             } else {
-                bottomCells[i].setText(LocaleController.getString("UseProxyTelegramInfo", R.string.UseProxyTelegramInfo) + "\n\n" + LocaleController.getString("UseProxyTelegramInfo2", R.string.UseProxyTelegramInfo2));
+                bottomCells[i].setText(LocaleController.getString(R.string.UseProxyTelegramInfo) + "\n\n" + LocaleController.getString(R.string.UseProxyTelegramInfo2));
                 bottomCells[i].setVisibility(View.GONE);
             }
             linearLayout2.addView(bottomCells[i], LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
@@ -446,7 +450,7 @@ public class ProxySettingsActivity extends BaseFragment {
 
         pasteCell = new TextSettingsCell(fragmentView.getContext());
         pasteCell.setBackground(Theme.getSelectorDrawable(true));
-        pasteCell.setText(LocaleController.getString("PasteFromClipboard", R.string.PasteFromClipboard), false);
+        pasteCell.setText(LocaleController.getString(R.string.PasteFromClipboard), false);
         pasteCell.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText4));
         pasteCell.setOnClickListener(v -> {
             if (pasteType != -1) {
@@ -491,7 +495,7 @@ public class ProxySettingsActivity extends BaseFragment {
 
         shareCell = new TextSettingsCell(context);
         shareCell.setBackgroundDrawable(Theme.getSelectorDrawable(true));
-        shareCell.setText(LocaleController.getString("ShareFile", R.string.ShareFile), false);
+        shareCell.setText(LocaleController.getString(R.string.ShareFile), false);
         shareCell.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText4));
         linearLayout2.addView(shareCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         shareCell.setOnClickListener(v -> {
@@ -540,8 +544,8 @@ public class ProxySettingsActivity extends BaseFragment {
                 return;
             }
             String link = url + params.toString();
-            QRCodeBottomSheet alert = new QRCodeBottomSheet(context, LocaleController.getString("ShareQrCode", R.string.ShareQrCode), link, LocaleController.getString("QRCodeLinkHelpProxy", R.string.QRCodeLinkHelpProxy), true);
-            Bitmap icon = SvgHelper.getBitmap(RLottieDrawable.readRes(null, R.raw.qr_dog), AndroidUtilities.dp(60), AndroidUtilities.dp(60), false);
+            QRCodeBottomSheet alert = new QRCodeBottomSheet(context, LocaleController.getString(R.string.ShareQrCode), link, LocaleController.getString(R.string.QRCodeLinkHelpProxy), true);
+            Bitmap icon = SvgHelper.getBitmap(AndroidUtilities.readRes(R.raw.qr_dog), AndroidUtilities.dp(60), AndroidUtilities.dp(60), false);
             alert.setCenterImage(icon);
             showDialog(alert);
         });
@@ -701,7 +705,7 @@ public class ProxySettingsActivity extends BaseFragment {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 TransitionManager.endTransitions(linearLayout2);
             }
-            if (animated) {
+            if (animated && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 final TransitionSet transitionSet = new TransitionSet()
                         .addTransition(new Fade(Fade.OUT))
                         .addTransition(new ChangeBounds())

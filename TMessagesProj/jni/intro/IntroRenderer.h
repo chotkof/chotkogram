@@ -15,7 +15,6 @@ typedef enum {
     Linear = 4,
     Sin = 5,
     EaseOutBounce,
-    FastOutSlowIn,
     TIMING_NUM
 } timing_type;
 

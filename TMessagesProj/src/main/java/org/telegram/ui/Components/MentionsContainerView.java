@@ -4,13 +4,23 @@ import static org.telegram.messenger.AndroidUtilities.dp;
 
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Outline;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Rect;
+import android.graphics.RectF;
+import android.os.Build;
+import android.text.Spannable;
+import android.text.SpannableString;
+import android.text.Spanned;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewOutlineProvider;
+import android.widget.FrameLayout;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.core.graphics.ColorUtils;
 import androidx.dynamicanimation.animation.FloatValueHolder;
 import androidx.dynamicanimation.animation.SpringAnimation;
 import androidx.dynamicanimation.animation.SpringForce;
@@ -20,18 +30,33 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.ChatObject;
 import org.telegram.messenger.FileLoader;
-import org.telegram.messenger.SharedConfig;
+import org.telegram.messenger.FileLog;
+import org.telegram.messenger.ImageReceiver;
+import org.telegram.messenger.MediaDataController;
+import org.telegram.messenger.MessageObject;
+import org.telegram.messenger.NotificationCenter;
+import org.telegram.messenger.UserConfig;
+import org.telegram.messenger.UserObject;
+import org.telegram.messenger.VideoEditedInfo;
 import org.telegram.tgnet.TLRPC;
+import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Adapters.MentionsAdapter;
 import org.telegram.ui.Adapters.PaddedListAdapter;
-import org.telegram.ui.ChatActivity;
+import org.telegram.ui.Business.QuickRepliesActivity;
+import org.telegram.ui.Cells.ContextLinkCell;
+import org.telegram.ui.Cells.MentionCell;
+import org.telegram.ui.Cells.StickerCell;
+import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
 import org.telegram.ui.ContentPreviewViewer;
+import org.telegram.ui.PhotoViewer;
 
-public class MentionsContainerView extends BlurredFrameLayout {
+import java.util.ArrayList;
 
-    private final SizeNotifierFrameLayout sizeNotifierFrameLayout;
+public class MentionsContainerView extends FrameLayout implements NotificationCenter.NotificationCenterDelegate {
+
     private final Theme.ResourcesProvider resourcesProvider;
 
     private MentionsListView listView;
@@ -40,24 +65,23 @@ public class MentionsContainerView extends BlurredFrameLayout {
 
     private PaddedListAdapter paddedAdapter;
     private MentionsAdapter adapter;
-    ChatActivity chatActivity;
+    BaseFragment baseFragment;
 
     private float containerTop, containerBottom, containerPadding, listViewPadding;
+    private RecyclerListView.OnItemClickListener mentionsOnItemClickListener;
+    private Delegate delegate;
 
-    public MentionsContainerView(@NonNull Context context, long dialogId, int threadMessageId, ChatActivity chatActivity, Theme.ResourcesProvider resourcesProvider) {
-        super(context, chatActivity.contentView);
-        this.chatActivity = chatActivity;
-        this.sizeNotifierFrameLayout = chatActivity.contentView;
+    public MentionsContainerView(@NonNull Context context, long dialogId, long threadMessageId, BaseFragment baseFragment, Theme.ResourcesProvider resourcesProvider) {
+        super(context);
+        this.baseFragment = baseFragment;
         this.resourcesProvider = resourcesProvider;
-        this.drawBlur = false;
-        this.isTopView = false;
         setVisibility(View.GONE);
         setWillNotDraw(false);
+        setClipToOutline(true);
 
         listViewPadding = (int) Math.min(AndroidUtilities.dp(36 * 3.5f), AndroidUtilities.displaySize.y * 0.22f);
 
         listView = new MentionsListView(context, resourcesProvider);
-        listView.setTranslationY(AndroidUtilities.dp(6));
         linearLayoutManager = new LinearLayoutManager(context) {
             @Override
             public boolean supportsPredictiveItemAnimations() {
@@ -76,9 +100,11 @@ public class MentionsContainerView extends BlurredFrameLayout {
 
             @Override
             protected Size getSizeForItem(int i) {
+                size.full = false;
                 if (i == 0) {
                     size.width = getWidth();
                     size.height = paddedAdapter.getPadding();
+                    size.full = true;
                     return size;
                 } else {
                     i--;
@@ -122,7 +148,7 @@ public class MentionsContainerView extends BlurredFrameLayout {
                             }
                         }
                     } else if (inlineResult.photo != null) {
-                        TLRPC.PhotoSize photoSize = FileLoader.getClosestPhotoSizeWithSize(inlineResult.photo.sizes, AndroidUtilities.photoSize);
+                        TLRPC.PhotoSize photoSize = FileLoader.getClosestPhotoSizeWithSize(inlineResult.photo.sizes, AndroidUtilities.getPhotoSize());
                         if (photoSize != null) {
                             size.width = photoSize.w;
                             size.height = photoSize.h;
@@ -135,9 +161,9 @@ public class MentionsContainerView extends BlurredFrameLayout {
             @Override
             protected int getFlowItemCount() {
                 if (adapter.getBotContextSwitch() != null || adapter.getBotWebViewSwitch() != null) {
-                    return getItemCount() - 2;
+                    return getItemCount() - 1;
                 }
-                return super.getFlowItemCount() - 1;
+                return super.getFlowItemCount();
             }
         };
         gridLayoutManager.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
@@ -154,6 +180,7 @@ public class MentionsContainerView extends BlurredFrameLayout {
                 } else if (object instanceof TLRPC.Document) {
                     return 20;
                 } else {
+                    position++;
                     if (adapter.getBotContextSwitch() != null || adapter.getBotWebViewSwitch() != null) {
                         position--;
                     }
@@ -177,7 +204,7 @@ public class MentionsContainerView extends BlurredFrameLayout {
             public void onItemCountUpdate(int oldCount, int newCount) {
                 if (listView.getLayoutManager() != gridLayoutManager && shown) {
                     AndroidUtilities.cancelRunOnUIThread(updateVisibilityRunnable);
-                    AndroidUtilities.runOnUIThread(updateVisibilityRunnable, chatActivity.fragmentOpened ? 0 : 100);
+                    AndroidUtilities.runOnUIThread(updateVisibilityRunnable, baseFragment.getFragmentBeginToShow() ? 0 : 100);
                 }
             }
 
@@ -211,9 +238,10 @@ public class MentionsContainerView extends BlurredFrameLayout {
                 MentionsContainerView.this.onContextClick(result);
             }
 
-        }, resourcesProvider);
+        }, resourcesProvider, isStories());
         paddedAdapter = new PaddedListAdapter(adapter);
         listView.setAdapter(paddedAdapter);
+        listView.setTranslationY(AndroidUtilities.dp(6));
 
         addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
         setReversed(false);
@@ -245,6 +273,10 @@ public class MentionsContainerView extends BlurredFrameLayout {
 
     }
 
+    protected void onAnimationScroll() {
+
+    }
+
     public MentionsListView getListView() {
         return listView;
     }
@@ -254,9 +286,11 @@ public class MentionsContainerView extends BlurredFrameLayout {
     }
 
     public void setReversed(boolean reversed) {
-        scrollToFirst = true;
-        linearLayoutManager.setReverseLayout(reversed);
-        adapter.setIsReversed(reversed);
+        if (reversed != isReversed()) {
+            scrollToFirst = true;
+            linearLayoutManager.setReverseLayout(reversed);
+            adapter.setIsReversed(reversed);
+        }
     }
 
     public boolean isReversed() {
@@ -290,12 +324,24 @@ public class MentionsContainerView extends BlurredFrameLayout {
     }
 
     @Override
-    public void dispatchDraw(Canvas canvas) {
+    public void dispatchDraw(@NonNull Canvas canvas) {
+        if (backgroundDrawable != null) {
+            backgroundDrawable.draw(canvas);
+            canvas.save();
+            canvas.clipPath(clipPath);
+            super.dispatchDraw(canvas);
+            canvas.restore();
+            return;
+        }
+
+
         boolean reversed = isReversed();
         boolean topPadding = (adapter.isStickers() || adapter.isBotContext()) && adapter.isMediaLayout() && adapter.getBotContextSwitch() == null && adapter.getBotWebViewSwitch() == null;
         containerPadding = AndroidUtilities.dp(2 + (topPadding ? 2 : 0));
+        canvas.save();
 
-        float r = AndroidUtilities.dp(4);
+        float r = AndroidUtilities.dp(6);
+        float wasContainerTop = containerTop;
         if (reversed) {
             int paddingViewTop = paddedAdapter.paddingViewAttached ? paddedAdapter.paddingView.getTop() : getHeight();
             float top = Math.max(0, paddingViewTop + listView.getTranslationY()) + containerPadding;
@@ -303,6 +349,7 @@ public class MentionsContainerView extends BlurredFrameLayout {
             rect.set(0, (int) (containerTop = 0), getMeasuredWidth(), (int) (containerBottom = top));
             r = Math.min(r, Math.abs(getMeasuredHeight() - containerBottom));
             if (r > 0) {
+                canvas.clipRect(0, 0, getWidth(), getHeight());
                 rect.top -= (int) r;
             }
         } else {
@@ -316,8 +363,12 @@ public class MentionsContainerView extends BlurredFrameLayout {
             rect.set(0, (int) (containerTop = top), getMeasuredWidth(), (int) (containerBottom = getMeasuredHeight()));
             r = Math.min(r, Math.abs(containerTop));
             if (r > 0) {
+                canvas.clipRect(0, 0, getWidth(), getHeight());
                 rect.bottom += (int) r;
             }
+        }
+        if (Math.abs(wasContainerTop - containerTop) > 0.1f) {
+            onAnimationScroll();
         }
 
         if (paint == null) {
@@ -326,30 +377,15 @@ public class MentionsContainerView extends BlurredFrameLayout {
         }
         paint.setColor(color != null ? color : getThemedColor(Theme.key_chat_messagePanelBackground));
 
-        if (SharedConfig.chatBlurEnabled() && sizeNotifierFrameLayout != null) {
-            if (r > 0) {
-                canvas.save();
-                if (path == null) {
-                    path = new Path();
-                } else {
-                    path.reset();
-                }
-                AndroidUtilities.rectTmp.set(rect);
-                path.addRoundRect(AndroidUtilities.rectTmp, r, r, Path.Direction.CW);
-                canvas.clipPath(path);
-            }
-            sizeNotifierFrameLayout.drawBlurRect(canvas, getY(), rect, paint, reversed);
-            if (r > 0) {
-                canvas.restore();
-            }
-        } else {
-            AndroidUtilities.rectTmp.set(rect);
-            canvas.drawRoundRect(AndroidUtilities.rectTmp, r, r, paint);
-        }
-        canvas.save();
+        drawRoundRect(canvas, rect, r);
         canvas.clipRect(rect);
         super.dispatchDraw(canvas);
         canvas.restore();
+    }
+
+    public void drawRoundRect(Canvas canvas, Rect rectTmp, float r) {
+        AndroidUtilities.rectTmp.set(rectTmp);
+        canvas.drawRoundRect(AndroidUtilities.rectTmp, r, r, paint);
     }
 
     private Integer color;
@@ -401,7 +437,7 @@ public class MentionsContainerView extends BlurredFrameLayout {
         if (listViewTranslationAnimator != null) {
             listViewTranslationAnimator.cancel();
         }
-        AndroidUtilities.runOnUIThread(updateVisibilityRunnable, chatActivity.fragmentOpened ? 0 : 100);
+        AndroidUtilities.runOnUIThread(updateVisibilityRunnable, (baseFragment != null && baseFragment.getFragmentBeginToShow()) ? 0 : 100);
         if (show) {
             onOpen();
         } else {
@@ -411,6 +447,12 @@ public class MentionsContainerView extends BlurredFrameLayout {
 
     public boolean isOpen() {
         return shown;
+    }
+
+    @Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        checkListViewPadding();
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
     }
 
     private SpringAnimation listViewTranslationAnimator;
@@ -475,6 +517,7 @@ public class MentionsContainerView extends BlurredFrameLayout {
                         );
                 listViewTranslationAnimator.addUpdateListener((anm, val, vel) -> {
                     listView.setTranslationY(val);
+                    onAnimationScroll();
                     hideT = AndroidUtilities.lerp(fromHideT, toHideT, (val - fromTranslation) / (toTranslation - fromTranslation));
                 });
                 if (forceZeroHeight) {
@@ -508,6 +551,151 @@ public class MentionsContainerView extends BlurredFrameLayout {
         }
     }
 
+    public void setDialogId(long dialogId) {
+        adapter.setDialogId(dialogId);
+    }
+
+    private ArrayList<Object> botContextResults;
+    private PhotoViewer.PhotoViewerProvider botContextProvider = new PhotoViewer.EmptyPhotoViewerProvider() {
+
+        @Override
+        public PhotoViewer.PlaceProviderObject getPlaceForPhoto(MessageObject messageObject, TLRPC.FileLocation fileLocation, int index, boolean needPreview, boolean closing) {
+            if (index < 0 || index >= botContextResults.size()) {
+                return null;
+            }
+            int count = getListView().getChildCount();
+            Object result = botContextResults.get(index);
+
+            for (int a = 0; a < count; a++) {
+                ImageReceiver imageReceiver = null;
+                View view = getListView().getChildAt(a);
+                if (view instanceof ContextLinkCell) {
+                    ContextLinkCell cell = (ContextLinkCell) view;
+                    if (cell.getResult() == result) {
+                        imageReceiver = cell.getPhotoImage();
+                    }
+                }
+
+                if (imageReceiver != null) {
+                    int[] coords = new int[2];
+                    view.getLocationInWindow(coords);
+                    PhotoViewer.PlaceProviderObject object = new PhotoViewer.PlaceProviderObject();
+                    object.viewX = coords[0];
+                    object.viewY = coords[1] - (Build.VERSION.SDK_INT >= 21 ? 0 : AndroidUtilities.statusBarHeight);
+                    object.parentView = getListView();
+                    object.imageReceiver = imageReceiver;
+                    object.thumb = imageReceiver.getBitmapSafe();
+                    object.radius = imageReceiver.getRoundRadius(true);
+                    return object;
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public void sendButtonPressed(int index, VideoEditedInfo videoEditedInfo, boolean notify, int scheduleDate, int scheduleRepeatPeriod, boolean forceDocument) {
+            if (index < 0 || index >= botContextResults.size()) {
+                return;
+            }
+            delegate.sendBotInlineResult((TLRPC.BotInlineResult) botContextResults.get(index), notify, scheduleDate);
+        }
+    };
+
+    public void withDelegate(Delegate delegate) {
+        this.delegate = delegate;
+        getListView().setOnItemClickListener(mentionsOnItemClickListener = (view, position) -> {
+            if (position == 0 || getAdapter().isBannedInline()) {
+                return;
+            }
+            position--;
+            Object object = getAdapter().getItem(position);
+            int start = getAdapter().getResultStartPosition();
+            int len = getAdapter().getResultLength();
+            if (getAdapter().isLocalHashtagHint(position)) {
+                TLRPC.Chat currentChat = getAdapter().chat;
+                if (currentChat == null && getAdapter().parentFragment != null) {
+                    currentChat = getAdapter().parentFragment.getCurrentChat();
+                }
+                delegate.replaceText(start, len, getAdapter().getHashtagHint() + (currentChat != null ? "@" + ChatObject.getPublicUsername(currentChat) : "") + " ", false);
+                return;
+            } else if (getAdapter().isGlobalHashtagHint(position)) {
+                delegate.replaceText(start, len, getAdapter().getHashtagHint() + " ", false);
+                return;
+            }
+            if (object instanceof TLRPC.TL_document) {
+                MessageObject.SendAnimationData sendAnimationData = null;
+                if (view instanceof StickerCell) {
+                    sendAnimationData = ((StickerCell) view).getSendAnimationData();
+                }
+                TLRPC.TL_document document = (TLRPC.TL_document) object;
+                Object parent = getAdapter().getItemParent(position);
+                String query = MessageObject.findAnimatedEmojiEmoticon(document);
+                delegate.onStickerSelected(document, query, parent);
+            } else if (object instanceof TLRPC.Chat) {
+                TLRPC.Chat chat = (TLRPC.Chat) object;
+                String username = ChatObject.getPublicUsername(chat);
+                if (username != null) {
+                    delegate.replaceText(start, len, "@" + username + " " , false);
+                }
+            } else if (object instanceof TLRPC.User) {
+                TLRPC.User user = (TLRPC.User) object;
+
+                if (UserObject.getPublicUsername(user) != null) {
+                    delegate.replaceText(start, len, "@" + UserObject.getPublicUsername(user) + " ", false);
+                } else {
+                    String name = UserObject.getFirstName(user, false);
+                    Spannable spannable = new SpannableString(name + " ");
+                    spannable.setSpan(new URLSpanUserMention("" + user.id, 3), 0, spannable.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    delegate.replaceText(start, len, spannable, false);
+                }
+            } else if (object instanceof String) {
+                delegate.replaceText(start, len, object + " ", false);
+            } else if (object instanceof MediaDataController.KeywordResult) {
+                String code = ((MediaDataController.KeywordResult) object).emoji;
+                delegate.addEmojiToRecent(code);
+                if (code != null && code.startsWith("animated_")) {
+                    try {
+                        Paint.FontMetricsInt fontMetrics = null;
+                        try {
+                            fontMetrics = delegate.getFontMetrics();
+                           // chatActivityEnterView.getEditField().getPaint().getFontMetricsInt();
+                        } catch (Exception e) {
+                            FileLog.e(e, false);
+                        }
+                        long documentId = Long.parseLong(code.substring(9));
+                        TLRPC.Document document = AnimatedEmojiDrawable.findDocument(UserConfig.selectedAccount, documentId);
+                        SpannableString emoji = new SpannableString(MessageObject.findAnimatedEmojiEmoticon(document));
+                        AnimatedEmojiSpan span;
+                        if (document != null) {
+                            span = new AnimatedEmojiSpan(document, fontMetrics);
+                        } else {
+                            span = new AnimatedEmojiSpan(documentId, fontMetrics);
+                        }
+                        emoji.setSpan(span, 0, emoji.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                        delegate.replaceText(start, len, emoji, false);
+                    } catch (Exception ignore) {
+                        delegate.replaceText(start, len, code, true);
+                    }
+                } else {
+                    delegate.replaceText(start, len, code, true);
+                }
+                updateVisibility(false);
+            } if (object instanceof TLRPC.BotInlineResult) {
+                TLRPC.BotInlineResult result = (TLRPC.BotInlineResult) object;
+                if ((result.type.equals("photo") && (result.photo != null || result.content != null) ||
+                        result.type.equals("gif") && (result.document != null || result.content != null) ||
+                        result.type.equals("video") && (result.document != null/* || result.content_url != null*/))) {
+                    ArrayList<Object> arrayList = botContextResults = new ArrayList<>(getAdapter().getSearchResultBotContext());
+                    PhotoViewer.getInstance().setParentActivity(baseFragment, resourcesProvider);
+                    PhotoViewer.getInstance().openPhotoForSelect(arrayList, getAdapter().getItemPosition(position), 3, false, botContextProvider, null);
+                } else {
+                    delegate.sendBotInlineResult(result, true, 0);
+                }
+            }
+        });
+        getListView().setOnTouchListener((v, event) -> ContentPreviewViewer.getInstance().onTouch(event, getListView(), 0, mentionsOnItemClickListener, null, resourcesProvider));
+    }
+
     public class MentionsListView extends RecyclerListView {
         private boolean isScrolling, isDragging;
 
@@ -531,10 +719,13 @@ public class MentionsContainerView extends BlurredFrameLayout {
                     }
                     int visibleItemCount = lastVisibleItem == RecyclerView.NO_POSITION ? 0 : lastVisibleItem;
                     if (visibleItemCount > 0 && lastVisibleItem > adapter.getLastItemCount() - 5) {
+//                        adapter.loadMoreStickers();
                         adapter.searchForContextBotForNextOffset();
                     }
 
                     MentionsContainerView.this.onScrolled(!canScrollVertically(-1), !canScrollVertically(1));
+
+                    checkBackgroundBounds();
                 }
             });
             addItemDecoration(new RecyclerView.ItemDecoration() {
@@ -549,7 +740,6 @@ public class MentionsContainerView extends BlurredFrameLayout {
                         if (position == 0) {
                             return;
                         }
-                        position--;
                         if (adapter.isStickers()) {
                             return;
                         } else if (adapter.getBotContextSwitch() != null || adapter.getBotWebViewSwitch() != null) {
@@ -649,6 +839,8 @@ public class MentionsContainerView extends BlurredFrameLayout {
         public void setTranslationY(float translationY) {
             super.setTranslationY(translationY);
             MentionsContainerView.this.invalidate();
+
+            checkBackgroundBounds();
         }
 
         @Override
@@ -665,6 +857,8 @@ public class MentionsContainerView extends BlurredFrameLayout {
         public void onScrolled(int dx, int dy) {
             super.onScrolled(dx, dy);
             MentionsContainerView.this.invalidate();
+
+            checkBackgroundBounds();
         }
     }
 
@@ -675,5 +869,153 @@ public class MentionsContainerView extends BlurredFrameLayout {
 
     private int getThemedColor(int key) {
         return Theme.getColor(key, resourcesProvider);
+    }
+
+    public interface Delegate {
+
+        void replaceText(int start, int len, CharSequence replacingString, boolean allowShort);
+
+        Paint.FontMetricsInt getFontMetrics();
+
+        default void onStickerSelected(TLRPC.TL_document document, String query, Object parent) {
+
+        }
+
+        default void addEmojiToRecent(String code) {
+
+        }
+
+        default void sendBotInlineResult(TLRPC.BotInlineResult botInlineResult, boolean notify, int scheduleDate) {}
+
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.emojiLoaded);
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.emojiLoaded);
+    }
+
+    @Override
+    public void didReceivedNotification(int id, int account, Object... args) {
+        if (id == NotificationCenter.emojiLoaded) {
+            AndroidUtilities.forEachViews(listView, view -> {
+                if (view instanceof MentionCell) {
+                    ((MentionCell) view).invalidateEmojis();
+                } else if (view instanceof QuickRepliesActivity.QuickReplyView) {
+                    ((QuickRepliesActivity.QuickReplyView) view).invalidateEmojis();
+                } else {
+                    view.invalidate();
+                }
+            });
+        }
+    }
+
+    protected boolean isStories() {
+        return false;
+    }
+
+
+
+
+    @Override
+    protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+        super.onLayout(changed, left, top, right, bottom);
+        checkBackgroundBounds();
+    }
+
+
+
+    private @Nullable BlurredBackgroundDrawable backgroundDrawable;
+
+    public void setBackgroundDrawable(@NonNull BlurredBackgroundDrawable backgroundDrawable) {
+        this.backgroundDrawable = backgroundDrawable;
+        this.backgroundDrawable.setRadius(dp(22));
+        this.backgroundDrawable.setPadding(dp(5));
+
+        checkListViewPadding();
+    }
+
+
+    private final Path clipPath = new Path();
+    private final RectF clipBounds = new RectF();
+
+    private void checkBackgroundBounds() {
+        if (listView == null || linearLayoutManager == null) {
+            return;
+        }
+
+        final boolean reversed = isReversed();
+        containerPadding = 0;
+
+        if (reversed) {
+            int paddingViewTop = paddedAdapter.paddingViewAttached ? paddedAdapter.paddingView.getTop() : getHeight();
+            float top = Math.max(0, paddingViewTop + listView.getTranslationY()) + containerPadding;
+            top = Math.min(top, (1f - hideT) * getHeight());
+
+            containerTop = 0;
+            containerBottom = top;
+        } else {
+            int paddingViewBottom = paddedAdapter.paddingViewAttached ? paddedAdapter.paddingView.getBottom() : 0;
+            float top = Math.max(0, paddingViewBottom + listView.getTranslationY()) - containerPadding;
+            top = Math.max(top, hideT * getHeight());
+
+
+            containerTop = top;
+            containerBottom = getMeasuredHeight();
+        }
+
+        if (backgroundDrawable != null) {
+            backgroundDrawable.setBounds(
+                0,
+                (int) containerTop - dp(5),
+                getMeasuredWidth(),
+                (int) containerBottom + dp(5)
+            );
+
+
+            clipPath.rewind();
+            clipBounds.set(backgroundDrawable.getPaddedBounds());
+            if (isGif()) {
+                clipBounds.inset(dp(2), dp(2));
+                clipPath.addRoundRect(clipBounds,
+                    dp(20),
+                    dp(20),
+                    Path.Direction.CW
+                );
+            } else {
+                clipPath.addRoundRect(clipBounds,
+                    dp(22),
+                    dp(22),
+                    Path.Direction.CW
+                );
+            }
+            clipPath.close();
+            invalidate();
+        }
+    }
+
+    private boolean isGif() {
+        return listView != null && gridLayoutManager != null
+            && listView.getLayoutManager() == gridLayoutManager && adapter != null && adapter.isBotContext();
+    }
+
+
+    private void checkListViewPadding() {
+        if (listView == null || linearLayoutManager == null) {
+            return;
+        }
+
+        final boolean isGif = isGif();
+        if (backgroundDrawable == null) {
+            listView.setPadding(0, 0, 0, 0);
+        } else {
+            listView.setPadding(dp(isGif ? 7 : 5), isGif ? dp(2) : 0, dp(isGif ? 7 : 5), isGif ? dp(2) : 0);
+        }
     }
 }

@@ -9,7 +9,9 @@ import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.SimpleTextView;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.BadWayToMakeButtonRound;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.ScaleStateListAnimator;
 
 @SuppressWarnings("FieldCanBeLocal")
 public class LocationDirectionCell extends FrameLayout {
@@ -23,7 +25,7 @@ public class LocationDirectionCell extends FrameLayout {
         this.resourcesProvider = resourcesProvider;
 
         frameLayout = new FrameLayout(context);
-        frameLayout.setBackground(Theme.AdaptiveRipple.filledRect(getThemedColor(Theme.key_featuredStickers_addButton), 4));
+        frameLayout.setBackground(Theme.AdaptiveRipple.filledRect(getThemedColor(Theme.key_featuredStickers_addButton), 8));
         addView(frameLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 48, Gravity.LEFT | Gravity.TOP, 16, 10, 16, 0));
 
         buttonTextView = new SimpleTextView(context);
@@ -32,10 +34,13 @@ public class LocationDirectionCell extends FrameLayout {
         buttonTextView.setDrawablePadding(AndroidUtilities.dp(8));
         buttonTextView.setTextColor(getThemedColor(Theme.key_featuredStickers_buttonText));
         buttonTextView.setTextSize(14);
-        buttonTextView.setText(LocaleController.getString("Directions", R.string.Directions));
-        buttonTextView.setLeftDrawable(R.drawable.navigate);
-        buttonTextView.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+        buttonTextView.setText(LocaleController.getString(R.string.Directions));
+        buttonTextView.setLeftDrawable(R.drawable.filled_directions);
+        buttonTextView.setTypeface(AndroidUtilities.bold());
         frameLayout.addView(buttonTextView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+
+        BadWayToMakeButtonRound.round(frameLayout);
+        ScaleStateListAnimator.apply(frameLayout, 0.02f, 1.2f);
     }
 
     @Override

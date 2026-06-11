@@ -9,7 +9,6 @@ import android.view.Gravity;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
@@ -29,6 +28,8 @@ import org.telegram.ui.Components.AlertsCreator;
 import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.RecyclerListView;
+import org.telegram.ui.Components.SectionsScrollView;
 import org.telegram.ui.Components.StickerImageView;
 
 import java.util.ArrayList;
@@ -71,7 +72,7 @@ public class AutoDeleteMessagesActivity extends BaseFragment implements Notifica
     public View createView(Context context) {
         actionBar.setBackButtonImage(R.drawable.ic_ab_back);
         actionBar.setAllowOverlayTitle(true);
-        actionBar.setTitle(LocaleController.getString("AutoDeleteMessages", R.string.AutoDeleteMessages));
+        actionBar.setTitle(LocaleController.getString(R.string.AutoDeleteMessages));
         actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(int id) {
@@ -85,17 +86,18 @@ public class AutoDeleteMessagesActivity extends BaseFragment implements Notifica
         FrameLayout frameLayout = (FrameLayout) fragmentView;
         frameLayout.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundGray));
 
-        ScrollView scrollView = new ScrollView(getContext());
-        LinearLayout mainContainer = new LinearLayout(getContext());
+        LinearLayout mainContainer = new SectionsScrollView.SectionsLinearLayout(getContext());
+        SectionsScrollView scrollView = new SectionsScrollView(getContext(), mainContainer, resourceProvider);
         mainContainer.setOrientation(LinearLayout.VERTICAL);
         scrollView.addView(mainContainer);
         frameLayout.addView(scrollView);
-
+        actionBar.setAdaptiveBackground(scrollView);
 
         FrameLayout stickerHeaderCell = new FrameLayout(context);
         StickerImageView backupImageView = new StickerImageView(context, currentAccount);
         backupImageView.setStickerNum(10);
         stickerHeaderCell.addView(backupImageView, LayoutHelper.createFrame(130, 130, Gravity.CENTER));
+        stickerHeaderCell.setTag(RecyclerListView.TAG_NOT_SECTION);
 
         mainContainer.addView(stickerHeaderCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 170));
 
@@ -105,31 +107,31 @@ public class AutoDeleteMessagesActivity extends BaseFragment implements Notifica
         mainContainer.addView(checkBoxContainer, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
         HeaderCell headerCell = new HeaderCell(getContext());
-        headerCell.setText(LocaleController.getString("MessageLifetime", R.string.MessageLifetime));
+        headerCell.setText(LocaleController.getString(R.string.MessageLifetime));
         checkBoxContainer.addView(headerCell);
 
         offCell = new RadioCellInternal(getContext());
-        offCell.setText(LocaleController.getString("ShortMessageLifetimeForever", R.string.ShortMessageLifetimeForever), false, true);
+        offCell.setText(LocaleController.getString(R.string.ShortMessageLifetimeForever), false, true);
         offCell.time = 0;
         checkBoxContainer.addView(offCell);
 
         afterOneDay = new RadioCellInternal(getContext());
-        afterOneDay.setText(LocaleController.getString("AutoDeleteAfter1Day", R.string.AutoDeleteAfter1Day), false, true);
+        afterOneDay.setText(LocaleController.getString(R.string.AutoDeleteAfter1Day), false, true);
         afterOneDay.time = ONE_DAY;
         checkBoxContainer.addView(afterOneDay);
 
         afterOneWeek = new RadioCellInternal(getContext());
-        afterOneWeek.setText(LocaleController.getString("AutoDeleteAfter1Week", R.string.AutoDeleteAfter1Week), false, true);
+        afterOneWeek.setText(LocaleController.getString(R.string.AutoDeleteAfter1Week), false, true);
         afterOneWeek.time = ONE_WEEK;
         checkBoxContainer.addView(afterOneWeek);
 
         afterOneMonth = new RadioCellInternal(getContext());
-        afterOneMonth.setText(LocaleController.getString("AutoDeleteAfter1Month", R.string.AutoDeleteAfter1Month), false, true);
+        afterOneMonth.setText(LocaleController.getString(R.string.AutoDeleteAfter1Month), false, true);
         afterOneMonth.time = ONE_MONTH;
         checkBoxContainer.addView(afterOneMonth);
 
         customTimeButton = new RadioCellInternal(getContext());
-        customTimeButton.setText(LocaleController.getString("SetCustomTime", R.string.SetCustomTime), false, false);
+        customTimeButton.setText(LocaleController.getString(R.string.SetCustomTime), false, false);
         customTimeButton.hideRadioButton();
         checkBoxContainer.addView(customTimeButton);
 
@@ -141,8 +143,8 @@ public class AutoDeleteMessagesActivity extends BaseFragment implements Notifica
 
         updateItems();
 
-        TextInfoPrivacyCell textInfoPrivacyCell = new TextInfoPrivacyCell(context);
-        CharSequence infoText = AndroidUtilities.replaceSingleTag(LocaleController.getString("GlobalAutoDeleteInfo", R.string.GlobalAutoDeleteInfo), new Runnable() {
+        TextInfoPrivacyCell textInfoPrivacyCell = new TextInfoPrivacyCell(context, 12, resourceProvider);
+        CharSequence infoText = AndroidUtilities.replaceSingleTag(LocaleController.getString(R.string.GlobalAutoDeleteInfo), new Runnable() {
             @Override
             public void run() {
                 UsersSelectActivity usersSelectActivity = new UsersSelectActivity(UsersSelectActivity.TYPE_AUTO_DELETE_EXISTING_CHATS);
@@ -185,7 +187,7 @@ public class AutoDeleteMessagesActivity extends BaseFragment implements Notifica
                 if (v == customTimeButton) {
                     AlertsCreator.createAutoDeleteDatePickerDialog(getContext(), 1, null, new AlertsCreator.ScheduleDatePickerDelegate() {
                         @Override
-                        public void didSelectDate(boolean notify, int scheduleDate) {
+                        public void didSelectDate(boolean notify, int scheduleDate, int scheduleRepeatPeriod) {
                             AndroidUtilities.runOnUIThread(() -> {
                                 selectDate(scheduleDate, true);
                             }, 50);
@@ -197,12 +199,12 @@ public class AutoDeleteMessagesActivity extends BaseFragment implements Notifica
                     int selctedTime = getSelectedTime();
                     if (selctedTime == 0 && time > 0) {
                         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-                        builder.setTitle(LocaleController.getString("MessageLifetime", R.string.MessageLifetime));
+                        builder.setTitle(LocaleController.getString(R.string.MessageLifetime));
                         builder.setMessage(LocaleController.formatString("AutoDeleteConfirmMessage", R.string.AutoDeleteConfirmMessage, LocaleController.formatTTLString(time * 60)));
-                        builder.setNegativeButton(LocaleController.getString("Cancel", R.string.Cancel), (dialog, which) -> {
+                        builder.setNegativeButton(LocaleController.getString(R.string.Cancel), (dialog, which) -> {
                             dialog.dismiss();
                         });
-                        builder.setPositiveButton(LocaleController.getString("Enable", R.string.Enable), (dialog, which) -> {
+                        builder.setPositiveButton(LocaleController.getString(R.string.Enable), (dialog, which) -> {
                             dialog.dismiss();
                             selectRadioButton(v, true);
                         });

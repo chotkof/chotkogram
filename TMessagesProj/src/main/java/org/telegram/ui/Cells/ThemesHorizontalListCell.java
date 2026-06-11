@@ -47,6 +47,7 @@ import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.Utilities;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.TLRPC;
+import org.telegram.tgnet.tl.TL_account;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.EmojiThemes;
 import org.telegram.ui.ActionBar.Theme;
@@ -62,8 +63,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
-
-import com.exteragram.messenger.ExteraConfig;
 
 public class ThemesHorizontalListCell extends RecyclerListView implements NotificationCenter.NotificationCenterDelegate {
 
@@ -198,7 +197,9 @@ public class ThemesHorizontalListCell extends RecyclerListView implements Notifi
                     if (action == MotionEvent.ACTION_DOWN) {
                         pressed = true;
                     } else {
-                        performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
+                        try {
+                            performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
+                        } catch (Exception ignored) {}
                         showOptionsForTheme(themeInfo);
                     }
                 }
@@ -335,7 +336,7 @@ public class ThemesHorizontalListCell extends RecyclerListView implements Notifi
                 if (!file.exists()) {
                     if (!loadingWallpapers.containsKey(themeInfo)) {
                         loadingWallpapers.put(themeInfo, themeInfo.slug);
-                        TLRPC.TL_account_getWallPaper req = new TLRPC.TL_account_getWallPaper();
+                        TL_account.getWallPaper req = new TL_account.getWallPaper();
                         TLRPC.TL_inputWallPaperSlug inputWallPaperSlug = new TLRPC.TL_inputWallPaperSlug();
                         inputWallPaperSlug.slug = themeInfo.slug;
                         req.wallpaper = inputWallPaperSlug;
@@ -673,8 +674,10 @@ public class ThemesHorizontalListCell extends RecyclerListView implements Notifi
             info.setChecked(button.isChecked());
             info.setCheckable(true);
             info.setEnabled(true);
-            info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_CLICK);
-            info.addAction(new AccessibilityNodeInfo.AccessibilityAction(AccessibilityNodeInfo.ACTION_LONG_CLICK, LocaleController.getString("AccDescrMoreOptions", R.string.AccDescrMoreOptions)));
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_CLICK);
+                info.addAction(new AccessibilityNodeInfo.AccessibilityAction(AccessibilityNodeInfo.ACTION_LONG_CLICK, LocaleController.getString(R.string.AccDescrMoreOptions)));
+            }
         }
     }
 
@@ -739,7 +742,7 @@ public class ThemesHorizontalListCell extends RecyclerListView implements Notifi
 
         SharedPreferences.Editor editor = ApplicationLoader.applicationContext.getSharedPreferences("themeconfig", Activity.MODE_PRIVATE).edit();
         editor.putString(currentType == ThemeActivity.THEME_TYPE_NIGHT || themeInfo.isDark() ? "lastDarkTheme" : "lastDayTheme", themeInfo.getKey());
-        editor.apply();
+        editor.commit();
 
         if (currentType == ThemeActivity.THEME_TYPE_NIGHT) {
             if (themeInfo == Theme.getCurrentNightTheme()) {

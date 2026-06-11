@@ -101,8 +101,13 @@ import java.lang.annotation.Target;
    * @param audioTrack The audio track that will provide timestamps, if the platform supports it.
    */
   public AudioTimestampPoller(AudioTrack audioTrack) {
-    audioTimestamp = new AudioTimestampV19(audioTrack);
-    reset();
+    if (Util.SDK_INT >= 19) {
+      audioTimestamp = new AudioTimestampV19(audioTrack);
+      reset();
+    } else {
+      audioTimestamp = null;
+      updateState(STATE_NO_TIMESTAMP);
+    }
   }
 
   /**
@@ -260,6 +265,7 @@ import java.lang.annotation.Target;
     }
   }
 
+  @RequiresApi(19)
   private static final class AudioTimestampV19 {
 
     private final AudioTrack audioTrack;

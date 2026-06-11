@@ -5,16 +5,18 @@ import android.util.SparseIntArray;
 
 import androidx.annotation.UiThread;
 
+import org.telegram.ui.Components.Reactions.HwEmojis;
+
 import java.util.ArrayList;
 
 public class DispatchQueuePoolBackground {
 
-    private final ArrayList<DispatchQueue> queues = new ArrayList<>(10);
-    private final SparseIntArray busyQueuesMap = new SparseIntArray();
-    private final ArrayList<DispatchQueue> busyQueues = new ArrayList<>(10);
-    private final int maxCount;
+    private ArrayList<DispatchQueue> queues = new ArrayList<>(10);
+    private SparseIntArray busyQueuesMap = new SparseIntArray();
+    private ArrayList<DispatchQueue> busyQueues = new ArrayList<>(10);
+    private int maxCount;
     private int createdCount;
-    private final int guid;
+    private int guid;
     private int totalTasksCount;
     private boolean cleanupScheduled;
 
@@ -24,7 +26,7 @@ public class DispatchQueuePoolBackground {
     private static DispatchQueuePoolBackground backgroundQueue;
 
 
-    private final Runnable cleanupRunnable = new Runnable() {
+    private Runnable cleanupRunnable = new Runnable() {
         @Override
         public void run() {
             if (!queues.isEmpty()) {
@@ -77,6 +79,11 @@ public class DispatchQueuePoolBackground {
             busyQueues.add(queue);
             int count = busyQueuesMap.get(queue.index, 0);
             busyQueuesMap.put(queue.index, count + 1);
+            if(HwEmojis.isHwEnabled()) {
+                queue.setPriority(Thread.MIN_PRIORITY);
+            } else if (queue.getPriority() != Thread.MAX_PRIORITY) {
+                queue.setPriority(Thread.MAX_PRIORITY);
+            }
             queue.postRunnable(() -> {
                 runnable.run();
                 Utilities.globalQueue.postRunnable(() -> {
@@ -96,7 +103,12 @@ public class DispatchQueuePoolBackground {
 
     private final static ArrayList<ArrayList<Runnable>> freeCollections = new ArrayList<>();
 
-    private static final Runnable finishCollectUpdateRunnable = DispatchQueuePoolBackground::finishCollectUpdateRunnables;
+    private static final Runnable finishCollectUpdateRunnable = new Runnable() {
+        @Override
+        public void run() {
+            finishCollectUpdateRunnables();
+        }
+    };
 
     @UiThread
     public static void execute(Runnable runnable) {
@@ -141,7 +153,9 @@ public class DispatchQueuePoolBackground {
         Utilities.globalQueue.postRunnable(() -> {
             backgroundQueue.execute(arrayList);
             arrayList.clear();
-            AndroidUtilities.runOnUIThread(() -> freeCollections.add(arrayList));
+            AndroidUtilities.runOnUIThread(() -> {
+                freeCollections.add(arrayList);
+            });
         });
 
     }

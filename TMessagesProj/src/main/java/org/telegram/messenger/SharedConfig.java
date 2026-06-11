@@ -14,6 +14,8 @@ import android.app.Dialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
+import android.media.MediaCodecInfo;
+import android.media.MediaCodecList;
 import android.os.Build;
 import android.os.Environment;
 import android.os.SystemClock;
@@ -22,9 +24,8 @@ import android.util.Base64;
 import android.webkit.WebView;
 
 import androidx.annotation.IntDef;
+import androidx.annotation.RequiresApi;
 import androidx.core.content.pm.ShortcutManagerCompat;
-
-import com.radolyn.ayugram.AyuConstants;
 
 import org.json.JSONObject;
 import org.telegram.tgnet.ConnectionsManager;
@@ -41,10 +42,10 @@ import java.io.UnsupportedEncodingException;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -85,9 +86,9 @@ public class SharedConfig {
 
                     readOnlyStorageDirAlertShowed = true;
                     AlertDialog.Builder dialog = new AlertDialog.Builder(fragment.getParentActivity());
-                    dialog.setTitle(LocaleController.getString("SdCardError", R.string.SdCardError));
-                    dialog.setSubtitle(LocaleController.getString("SdCardErrorDescription", R.string.SdCardErrorDescription));
-                    dialog.setPositiveButton(LocaleController.getString("DoNotUseSDCard", R.string.DoNotUseSDCard), (dialog1, which) -> {
+                    dialog.setTitle(LocaleController.getString(R.string.SdCardError));
+                    dialog.setSubtitle(LocaleController.getString(R.string.SdCardErrorDescription));
+                    dialog.setPositiveButton(LocaleController.getString(R.string.DoNotUseSDCard), (dialog1, which) -> {
 
                     });
                     Dialog dialogFinal = dialog.create();
@@ -96,6 +97,102 @@ public class SharedConfig {
                 }
             });
         }
+    }
+
+    static Boolean allowPreparingHevcPlayers;
+
+    public static boolean allowPreparingHevcPlayers() {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M) {
+            return false;
+        }
+        if (allowPreparingHevcPlayers == null) {
+            int codecCount = MediaCodecList.getCodecCount();
+            int maxInstances = 0;
+            int capabilities = 0;
+
+            for (int i = 0; i < codecCount; i++) {
+                MediaCodecInfo codecInfo = MediaCodecList.getCodecInfoAt(i);
+                if (codecInfo.isEncoder()) {
+                    continue;
+                }
+
+                boolean found = false;
+                for (int k = 0; k < codecInfo.getSupportedTypes().length; k++) {
+                    if (codecInfo.getSupportedTypes()[k].contains("video/hevc")) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    continue;
+                }
+                capabilities = codecInfo.getCapabilitiesForType("video/hevc").getMaxSupportedInstances();
+                if (capabilities > maxInstances) {
+                    maxInstances = capabilities;
+                }
+            }
+            allowPreparingHevcPlayers = maxInstances >= 8;
+        }
+        return allowPreparingHevcPlayers;
+    }
+
+    public static void togglePaymentByInvoice() {
+        payByInvoice = !payByInvoice;
+        ApplicationLoader.applicationContext.getSharedPreferences("mainconfig", Activity.MODE_PRIVATE)
+                .edit()
+                .putBoolean("payByInvoice", payByInvoice)
+                .apply();
+    }
+
+    public static void toggleSurfaceInStories() {
+        useSurfaceInStories = !useSurfaceInStories;
+        ApplicationLoader.applicationContext.getSharedPreferences("mainconfig", Activity.MODE_PRIVATE)
+                .edit()
+                .putBoolean("useSurfaceInStories", useSurfaceInStories)
+                .apply();
+    }
+
+    public static void togglePhotoViewerBlur() {
+        photoViewerBlur = !photoViewerBlur;
+        ApplicationLoader.applicationContext.getSharedPreferences("mainconfig", Activity.MODE_PRIVATE)
+                .edit()
+                .putBoolean("photoViewerBlur", photoViewerBlur)
+                .apply();
+    }
+
+    private static String goodHevcEncoder;
+    private static HashSet<String> hevcEncoderWhitelist = new HashSet<>();
+    static {
+        hevcEncoderWhitelist.add("c2.exynos.hevc.encoder");
+        hevcEncoderWhitelist.add("OMX.Exynos.HEVC.Encoder".toLowerCase());
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.Q)
+    public static String findGoodHevcEncoder() {
+        if (goodHevcEncoder == null) {
+            int codecCount = MediaCodecList.getCodecCount();
+            for (int i = 0; i < codecCount; i++) {
+                MediaCodecInfo codecInfo = MediaCodecList.getCodecInfoAt(i);
+                if (!codecInfo.isEncoder()) {
+                    continue;
+                }
+
+                for (int k = 0; k < codecInfo.getSupportedTypes().length; k++) {
+                    if (codecInfo.getSupportedTypes()[k].contains("video/hevc") && codecInfo.isHardwareAccelerated() && isWhitelisted(codecInfo)) {
+                        return goodHevcEncoder = codecInfo.getName();
+                    }
+                }
+            }
+            goodHevcEncoder = "";
+        }
+        return TextUtils.isEmpty(goodHevcEncoder) ? null : goodHevcEncoder;
+    }
+
+    private static boolean isWhitelisted(MediaCodecInfo codecInfo) {
+        if (BuildVars.DEBUG_PRIVATE_VERSION) {
+            return true;
+        }
+        return hevcEncoderWhitelist.contains(codecInfo.getName().toLowerCase());
     }
 
     @Retention(RetentionPolicy.SOURCE)
@@ -118,6 +215,9 @@ public class SharedConfig {
     public static boolean pushStatSent;
     public static byte[] pushAuthKey;
     public static byte[] pushAuthKeyId;
+    public static boolean forceForumTabs;
+    public static boolean fastWallpaperDisabled;
+    public static boolean frameMetricsEnabled;
 
     public static String directShareHash;
 
@@ -135,25 +235,35 @@ public class SharedConfig {
     public static boolean allowScreenCapture;
     public static int lastPauseTime;
     public static boolean isWaitingForPasscodeEnter;
-    public static boolean useFingerprint = true;
-    public static String lastUpdateVersion;
+    public static boolean useFingerprintLock = true;
+    public static boolean useFaceLock = true;
     public static int suggestStickers;
     public static boolean suggestAnimatedEmoji;
     public static int keepMedia = CacheByChatsController.KEEP_MEDIA_ONE_MONTH; //deprecated
     public static int lastKeepMediaCheckTime;
     public static int lastLogsCheckTime;
-    public static int searchMessagesAsListHintShows;
     public static int textSelectionHintShows;
     public static int scheduledOrNoSoundHintShows;
+    public static long scheduledOrNoSoundHintSeenAt;
+    public static int scheduledHintShows;
+    public static long scheduledHintSeenAt;
     public static int lockRecordAudioVideoHint;
-    public static boolean forwardingOptionsHintShown;
+    public static boolean forwardingOptionsHintShown, replyingOptionsHintShown;
     public static boolean searchMessagesAsListUsed;
     public static boolean stickersReorderingHintUsed;
     public static int dayNightWallpaperSwitchHint;
+    public static boolean storyReactionsLongPressHint;
+    public static boolean storiesIntroShown;
     public static boolean disableVoiceAudioEffects;
     public static boolean forceDisableTabletMode;
     public static boolean updateStickersOrderOnSend = true;
     public static boolean bigCameraForRound;
+    public static Boolean useCamera2Force;
+    public static boolean useNewBlur;
+    public static boolean useSurfaceInStories;
+    public static boolean photoViewerBlur = true;
+    public static boolean payByInvoice;
+    public static int stealthModeSendMessageConfirm = 2;
     private static int lastLocalId = -210000;
 
     public static String storageCacheDir;
@@ -168,14 +278,19 @@ public class SharedConfig {
 
 //    public static int saveToGalleryFlags;
     public static int mapPreviewType = 2;
+    public static int searchEngineType = 0;
+    public static String searchEngineCustomURLQuery, searchEngineCustomURLAutocomplete;
     public static boolean chatBubbles = Build.VERSION.SDK_INT >= 30;
     public static boolean raiseToSpeak = false;
     public static boolean raiseToListen = true;
     public static boolean nextMediaTap = true;
     public static boolean recordViaSco = false;
     public static boolean customTabs = true;
+    public static boolean inappBrowser = true;
+    public static boolean adaptableColorInBrowser = true;
+    public static boolean onlyLocalInstantView = false;
     public static boolean directShare = true;
-    public static boolean inAppCamera = true;
+    public static boolean inappCamera = true;
     public static boolean roundCamera16to9 = true;
     public static boolean noSoundHintShowed = false;
     public static boolean streamMedia = true;
@@ -193,9 +308,11 @@ public class SharedConfig {
     public static boolean playOrderReversed;
     public static boolean hasCameraCache;
     public static boolean showNotificationsForAllAccounts = true;
+    public static boolean debugVideoQualities = false;
     public static int repeatMode;
     public static boolean allowBigEmoji;
     public static boolean useSystemEmoji;
+    public static boolean useSystemBoldFont;
     public static int fontSize = 16;
     public static boolean fontSizeIsDefault;
     public static int bubbleRadius = 17;
@@ -205,6 +322,11 @@ public class SharedConfig {
     public static int messageSeenHintCount;
     public static int emojiInteractionsHintCount;
     public static int dayNightThemeSwitchHintCount;
+    public static int callEncryptionHintDisplayedCount;
+    public static boolean shadowsInSections;
+    public static boolean debugViewMetrics;
+    public static boolean photoHighQualityDefault;
+    public static boolean photoLiveDefault;
 
     public static TLRPC.TL_help_appUpdate pendingAppUpdate;
     public static int pendingAppUpdateBuildVersion;
@@ -217,6 +339,7 @@ public class SharedConfig {
     @PerformanceClass
     private static int overrideDevicePerformanceClass;
 
+    public static boolean drawDialogIcons;
     public static boolean useThreeLinesLayout;
     public static boolean archiveHidden;
 
@@ -224,15 +347,13 @@ public class SharedConfig {
 
     public static int distanceSystemType;
     public static int mediaColumnsCount = 3;
+    public static int storiesColumnsCount = 3;
     public static int fastScrollHintCount = 3;
     public static boolean dontAskManageStorage;
-
-    public static boolean translateChats = true;
+    public static boolean multipleReactionsPromoShowed;
 
     public static boolean isFloatingDebugActive;
     public static LiteMode liteMode;
-
-    public static SharedPreferences.Editor editor;
 
     private static final int[] LOW_SOC = {
             -1775228513, // EXYNOS 850
@@ -323,8 +444,7 @@ public class SharedConfig {
                 editor.putInt("badPasscodeTries", badPasscodeTries);
                 editor.putInt("autoLockIn", autoLockIn);
                 editor.putInt("lastPauseTime", lastPauseTime);
-                editor.putString("lastUpdateVersion2", lastUpdateVersion);
-                editor.putBoolean("useFingerprint", useFingerprint);
+                editor.putBoolean("useFingerprint", useFingerprintLock);
                 editor.putBoolean("allowScreenCapture", allowScreenCapture);
                 editor.putString("pushString2", pushString);
                 editor.putInt("pushType", pushType);
@@ -337,7 +457,11 @@ public class SharedConfig {
                 editor.putBoolean("sortFilesByName", sortFilesByName);
                 editor.putInt("textSelectionHintShows", textSelectionHintShows);
                 editor.putInt("scheduledOrNoSoundHintShows", scheduledOrNoSoundHintShows);
+                editor.putLong("scheduledOrNoSoundHintSeenAt", scheduledOrNoSoundHintSeenAt);
+                editor.putInt("scheduledHintShows", scheduledHintShows);
+                editor.putLong("scheduledHintSeenAt", scheduledHintSeenAt);
                 editor.putBoolean("forwardingOptionsHintShown", forwardingOptionsHintShown);
+                editor.putBoolean("replyingOptionsHintShown", replyingOptionsHintShown);
                 editor.putInt("lockRecordAudioVideoHint", lockRecordAudioVideoHint);
                 editor.putString("storageCacheDir", !TextUtils.isEmpty(storageCacheDir) ? storageCacheDir : "");
                 editor.putBoolean("proxyRotationEnabled", proxyRotationEnabled);
@@ -380,14 +504,6 @@ public class SharedConfig {
         return value;
     }
 
-    public static void toggleUseSystemEmoji() {
-        useSystemEmoji = !useSystemEmoji;
-        SharedPreferences preferences = MessagesController.getGlobalMainSettings();
-        SharedPreferences.Editor editor = preferences.edit();
-        editor.putBoolean("useSystemEmoji", useSystemEmoji);
-        editor.apply();
-    }
-
     public static void loadConfig() {
         synchronized (sync) {
             if (configLoaded || ApplicationLoader.applicationContext == null) {
@@ -397,8 +513,6 @@ public class SharedConfig {
             BackgroundActivityPrefs.prefs = ApplicationLoader.applicationContext.getSharedPreferences("background_activity", Context.MODE_PRIVATE);
 
             SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("userconfing", Context.MODE_PRIVATE);
-            editor = preferences.edit();
-
             saveIncomingPhotos = preferences.getBoolean("saveIncomingPhotos", false);
             passcodeHash = preferences.getString("passcodeHash1", "");
             appLocked = preferences.getBoolean("appLocked", false);
@@ -408,8 +522,7 @@ public class SharedConfig {
             badPasscodeTries = preferences.getInt("badPasscodeTries", 0);
             autoLockIn = preferences.getInt("autoLockIn", 60 * 60);
             lastPauseTime = preferences.getInt("lastPauseTime", 0);
-            useFingerprint = preferences.getBoolean("useFingerprint", true);
-            lastUpdateVersion = preferences.getString("lastUpdateVersion2", "3.5");
+            useFingerprintLock = preferences.getBoolean("useFingerprint", true);
             allowScreenCapture = preferences.getBoolean("allowScreenCapture", false);
             lastLocalId = preferences.getInt("lastLocalId", -210000);
             pushString = preferences.getString("pushString2", "");
@@ -439,7 +552,7 @@ public class SharedConfig {
             try {
                 String update = preferences.getString("appUpdate", null);
                 if (update != null) {
-                    pendingAppUpdateBuildVersion = preferences.getInt("appUpdateBuild", BuildVars.BUILD_VERSION);
+                    pendingAppUpdateBuildVersion = preferences.getInt("appUpdateBuild", buildVersion());
                     byte[] arr = Base64.decode(update, Base64.DEFAULT);
                     if (arr != null) {
                         SerializedData data = new SerializedData(arr);
@@ -448,6 +561,7 @@ public class SharedConfig {
                     }
                 }
                 if (pendingAppUpdate != null) {
+                    long updateTime = 0;
                     int updateVersion = 0;
                     String updateVersionString = null;
                     try {
@@ -458,7 +572,7 @@ public class SharedConfig {
                         FileLog.e(e);
                     }
                     if (updateVersion == 0) {
-                        updateVersion = BuildVars.BUILD_VERSION;
+                        updateVersion = buildVersion();
                     }
                     if (updateVersionString == null) {
                         updateVersionString = BuildVars.BUILD_VERSION_STRING;
@@ -475,15 +589,19 @@ public class SharedConfig {
             preferences = ApplicationLoader.applicationContext.getSharedPreferences("mainconfig", Activity.MODE_PRIVATE);
             SaveToGallerySettingsHelper.load(preferences);
             mapPreviewType = preferences.getInt("mapPreviewType", 2);
+            searchEngineType = preferences.getInt("searchEngineType", 0);
             raiseToListen = preferences.getBoolean("raise_to_listen", true);
             raiseToSpeak = preferences.getBoolean("raise_to_speak", false);
             nextMediaTap = preferences.getBoolean("next_media_on_tap", true);
             recordViaSco = preferences.getBoolean("record_via_sco", false);
             customTabs = preferences.getBoolean("custom_tabs", true);
+            inappBrowser = preferences.getBoolean("inapp_browser", false);
+            adaptableColorInBrowser = preferences.getBoolean("adaptableBrowser", false);
+            onlyLocalInstantView = preferences.getBoolean("onlyLocalInstantView", BuildVars.DEBUG_PRIVATE_VERSION);
             directShare = preferences.getBoolean("direct_share", true);
             shuffleMusic = preferences.getBoolean("shuffleMusic", false);
             playOrderReversed = !shuffleMusic && preferences.getBoolean("playOrderReversed", false);
-            inAppCamera = preferences.getBoolean("inappCamera", true);
+            inappCamera = preferences.getBoolean("inappCamera", true);
             hasCameraCache = preferences.contains("cameraCache");
             roundCamera16to9 = true;
             repeatMode = preferences.getInt("repeatMode", 0);
@@ -493,9 +611,16 @@ public class SharedConfig {
             ivFontSize = preferences.getInt("iv_font_size", fontSize);
             allowBigEmoji = preferences.getBoolean("allowBigEmoji", true);
             useSystemEmoji = preferences.getBoolean("useSystemEmoji", false);
+            useSystemBoldFont = preferences.getBoolean("useSystemBoldFont", false);
+            forceForumTabs = preferences.getBoolean("forceForumTabs", false);
+            fastWallpaperDisabled = preferences.getBoolean("fastWallpaperDisabled", false);
+            frameMetricsEnabled = preferences.getBoolean("frameMetricsEnabled", false);
+            if (useSystemBoldFont) {
+                AndroidUtilities.mediumTypeface = null;
+            }
             streamMedia = preferences.getBoolean("streamMedia", true);
             saveStreamMedia = preferences.getBoolean("saveStreamMedia", true);
-            pauseMusicOnRecord = preferences.getBoolean("pauseMusicOnRecord", false);
+            pauseMusicOnRecord = preferences.getBoolean("pauseMusicOnRecord", true);
             pauseMusicOnMedia = preferences.getBoolean("pauseMusicOnMedia", false);
             forceDisableTabletMode = preferences.getBoolean("forceDisableTabletMode", false);
             streamAllVideo = preferences.getBoolean("streamAllVideo", BuildVars.DEBUG_VERSION);
@@ -515,12 +640,17 @@ public class SharedConfig {
             debugWebView = preferences.getBoolean("debugWebView", false);
             lastKeepMediaCheckTime = preferences.getInt("lastKeepMediaCheckTime", 0);
             lastLogsCheckTime = preferences.getInt("lastLogsCheckTime", 0);
-            searchMessagesAsListHintShows = preferences.getInt("searchMessagesAsListHintShows", 0);
             searchMessagesAsListUsed = preferences.getBoolean("searchMessagesAsListUsed", false);
             stickersReorderingHintUsed = preferences.getBoolean("stickersReorderingHintUsed", false);
+            storyReactionsLongPressHint = preferences.getBoolean("storyReactionsLongPressHint", false);
+            storiesIntroShown = preferences.getBoolean("storiesIntroShown", false);
             textSelectionHintShows = preferences.getInt("textSelectionHintShows", 0);
             scheduledOrNoSoundHintShows = preferences.getInt("scheduledOrNoSoundHintShows", 0);
+            scheduledOrNoSoundHintSeenAt = preferences.getLong("scheduledOrNoSoundHintSeenAt", 0);
+            scheduledHintShows = preferences.getInt("scheduledHintShows", 0);
+            scheduledHintSeenAt = preferences.getLong("scheduledHintSeenAt", 0);
             forwardingOptionsHintShown = preferences.getBoolean("forwardingOptionsHintShown", false);
+            replyingOptionsHintShown = preferences.getBoolean("replyingOptionsHintShown", false);
             lockRecordAudioVideoHint = preferences.getInt("lockRecordAudioVideoHint", 0);
             disableVoiceAudioEffects = preferences.getBoolean("disableVoiceAudioEffects", false);
             noiseSupression = preferences.getBoolean("noiseSupression", false);
@@ -528,7 +658,9 @@ public class SharedConfig {
             messageSeenHintCount = preferences.getInt("messageSeenCount", 3);
             emojiInteractionsHintCount = preferences.getInt("emojiInteractionsHintCount", 3);
             dayNightThemeSwitchHintCount = preferences.getInt("dayNightThemeSwitchHintCount", 3);
+            stealthModeSendMessageConfirm = preferences.getInt("stealthModeSendMessageConfirm", 2);
             mediaColumnsCount = preferences.getInt("mediaColumnsCount", 3);
+            storiesColumnsCount = preferences.getInt("storiesColumnsCount", 3);
             fastScrollHintCount = preferences.getInt("fastScrollHintCount", 3);
             dontAskManageStorage = preferences.getBoolean("dontAskManageStorage", false);
             hasEmailLogin = preferences.getBoolean("hasEmailLogin", false);
@@ -536,19 +668,34 @@ public class SharedConfig {
             updateStickersOrderOnSend = preferences.getBoolean("updateStickersOrderOnSend", true);
             dayNightWallpaperSwitchHint = preferences.getInt("dayNightWallpaperSwitchHint", 0);
             bigCameraForRound = preferences.getBoolean("bigCameraForRound", false);
+            useNewBlur = preferences.getBoolean("useNewBlur", true);
+            useCamera2Force = !preferences.contains("useCamera2Force_2") ? null : preferences.getBoolean("useCamera2Force_2", false);
+            useSurfaceInStories = preferences.getBoolean("useSurfaceInStories", Build.VERSION.SDK_INT >= 30);
+            payByInvoice = preferences.getBoolean("payByInvoice", false);
+            photoViewerBlur = preferences.getBoolean("photoViewerBlur", true);
+            multipleReactionsPromoShowed = preferences.getBoolean("multipleReactionsPromoShowed", false);
+            callEncryptionHintDisplayedCount = preferences.getInt("callEncryptionHintDisplayedCount", 0);
+            debugVideoQualities = preferences.getBoolean("debugVideoQualities", false);
+            shadowsInSections = preferences.getBoolean("shadowsInSections", false);
+            debugViewMetrics = preferences.getBoolean("debugViewMetrics", false);
+            photoHighQualityDefault = preferences.getBoolean("photoHighQualityDefault", false);
+            photoLiveDefault = preferences.getBoolean("photoLiveDefault", false);
+
+            loadDebugConfig(preferences);
 
             preferences = ApplicationLoader.applicationContext.getSharedPreferences("Notifications", Activity.MODE_PRIVATE);
             showNotificationsForAllAccounts = preferences.getBoolean("AllAccounts", true);
 
             configLoaded = true;
+        }
+    }
 
-            try {
-                if (debugWebView) {
-                    WebView.setWebContentsDebuggingEnabled(true);
-                }
-            } catch (Exception e) {
-                FileLog.e(e);
-            }
+    public static int buildVersion() {
+        try {
+            return ApplicationLoader.applicationContext.getPackageManager().getPackageInfo(ApplicationLoader.applicationContext.getPackageName(), 0).versionCode;
+        } catch (Exception e) {
+            FileLog.e(e);
+            return 0;
         }
     }
 
@@ -626,7 +773,7 @@ public class SharedConfig {
     }
 
     public static boolean isAppUpdateAvailable() {
-        if (pendingAppUpdate == null || pendingAppUpdate.document == null || !BuildVars.isStandaloneApp()) {
+        if (pendingAppUpdate == null || pendingAppUpdate.document == null || !ApplicationLoader.isStandaloneBuild()) {
             return false;
         }
         int currentVersion;
@@ -635,7 +782,7 @@ public class SharedConfig {
             currentVersion = pInfo.versionCode;
         } catch (Exception e) {
             FileLog.e(e);
-            currentVersion = BuildVars.BUILD_VERSION;
+            currentVersion = buildVersion();
         }
         return pendingAppUpdateBuildVersion == currentVersion;
     }
@@ -651,17 +798,33 @@ public class SharedConfig {
             FileLog.e(e);
         }
         if (versionCode == 0) {
-            versionCode = BuildVars.BUILD_VERSION;
+            versionCode = buildVersion();
         }
         if (updateVersionString == null) {
             updateVersionString = BuildVars.BUILD_VERSION_STRING;
         }
-        if (update.version == null || updateVersionString.compareTo(update.version) >= 0) {
+        if (update.version == null || versionBiggerOrEqual(updateVersionString, update.version)) {
             return false;
         }
         pendingAppUpdate = update;
         pendingAppUpdateBuildVersion = versionCode;
         saveConfig();
+        return true;
+    }
+
+    // returns a >= b
+    public static boolean versionBiggerOrEqual(String a, String b) {
+        String[] partsA = a.split("\\.");
+        String[] partsB = b.split("\\.");
+        for (int i = 0; i < Math.min(partsA.length, partsB.length); ++i) {
+            int numA = Integer.parseInt(partsA[i]);
+            int numB = Integer.parseInt(partsB[i]);
+            if (numA < numB) {
+                return false;
+            } else if (numA > numB) {
+                return true;
+            }
+        }
         return true;
     }
 
@@ -672,7 +835,7 @@ public class SharedConfig {
                 try {
                     passcodeSalt = new byte[16];
                     Utilities.random.nextBytes(passcodeSalt);
-                    byte[] passcodeBytes = passcode.getBytes(StandardCharsets.UTF_8);
+                    byte[] passcodeBytes = passcode.getBytes("UTF-8");
                     byte[] bytes = new byte[32 + passcodeBytes.length];
                     System.arraycopy(passcodeSalt, 0, bytes, 0, 16);
                     System.arraycopy(passcodeBytes, 0, bytes, 16, passcodeBytes.length);
@@ -686,7 +849,7 @@ public class SharedConfig {
             return result;
         } else {
             try {
-                byte[] passcodeBytes = passcode.getBytes(StandardCharsets.UTF_8);
+                byte[] passcodeBytes = passcode.getBytes("UTF-8");
                 byte[] bytes = new byte[32 + passcodeBytes.length];
                 System.arraycopy(passcodeSalt, 0, bytes, 0, 16);
                 System.arraycopy(passcodeBytes, 0, bytes, 16, passcodeBytes.length);
@@ -711,19 +874,31 @@ public class SharedConfig {
         passcodeSalt = new byte[0];
         autoLockIn = 60 * 60;
         lastPauseTime = 0;
-        useFingerprint = true;
+        useFingerprintLock = true;
         isWaitingForPasscodeEnter = false;
         allowScreenCapture = false;
-        lastUpdateVersion = BuildVars.BUILD_VERSION_STRING;
         textSelectionHintShows = 0;
         scheduledOrNoSoundHintShows = 0;
+        scheduledOrNoSoundHintSeenAt = 0;
+        scheduledHintShows = 0;
+        scheduledHintSeenAt = 0;
         lockRecordAudioVideoHint = 0;
         forwardingOptionsHintShown = false;
+        replyingOptionsHintShown = false;
         messageSeenHintCount = 3;
         emojiInteractionsHintCount = 3;
         dayNightThemeSwitchHintCount = 3;
+        stealthModeSendMessageConfirm = 2;
         dayNightWallpaperSwitchHint = 0;
         saveConfig();
+    }
+
+    public static void setMultipleReactionsPromoShowed(boolean val) {
+        multipleReactionsPromoShowed = val;
+        SharedPreferences preferences = MessagesController.getGlobalMainSettings();
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("multipleReactionsPromoShowed", multipleReactionsPromoShowed);
+        editor.apply();
     }
 
     public static void setSuggestStickers(int type) {
@@ -750,6 +925,22 @@ public class SharedConfig {
         editor.apply();
     }
 
+    public static void setStoriesReactionsLongPressHintUsed(boolean value) {
+        storyReactionsLongPressHint = value;
+        SharedPreferences preferences = MessagesController.getGlobalMainSettings();
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("storyReactionsLongPressHint", storyReactionsLongPressHint);
+        editor.apply();
+    }
+
+    public static void setStoriesIntroShown(boolean isShown) {
+        storiesIntroShown = isShown;
+        SharedPreferences preferences = MessagesController.getGlobalMainSettings();
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("storiesIntroShown", storiesIntroShown);
+        editor.apply();
+    }
+
     public static void increaseTextSelectionHintShowed() {
         SharedPreferences preferences = MessagesController.getGlobalMainSettings();
         SharedPreferences.Editor editor = preferences.edit();
@@ -771,10 +962,21 @@ public class SharedConfig {
         editor.apply();
     }
 
-    public static void increaseScheduledOrNoSuoundHintShowed() {
+    public static void increaseScheduledOrNoSoundHintShowed() {
         SharedPreferences preferences = MessagesController.getGlobalMainSettings();
         SharedPreferences.Editor editor = preferences.edit();
+        scheduledOrNoSoundHintSeenAt = System.currentTimeMillis();
         editor.putInt("scheduledOrNoSoundHintShows", ++scheduledOrNoSoundHintShows);
+        editor.putLong("scheduledOrNoSoundHintSeenAt", scheduledOrNoSoundHintSeenAt);
+        editor.apply();
+    }
+
+    public static void increaseScheduledHintShowed() {
+        SharedPreferences preferences = MessagesController.getGlobalMainSettings();
+        SharedPreferences.Editor editor = preferences.edit();
+        scheduledHintSeenAt = System.currentTimeMillis();
+        editor.putInt("scheduledHintShows", ++scheduledHintShows);
+        editor.putLong("scheduledHintSeenAt", scheduledHintSeenAt);
         editor.apply();
     }
 
@@ -786,10 +988,25 @@ public class SharedConfig {
         editor.apply();
     }
 
+    public static void replyingOptionsHintHintShowed() {
+        SharedPreferences preferences = MessagesController.getGlobalMainSettings();
+        SharedPreferences.Editor editor = preferences.edit();
+        replyingOptionsHintShown = true;
+        editor.putBoolean("replyingOptionsHintShown", replyingOptionsHintShown);
+        editor.apply();
+    }
+
     public static void removeScheduledOrNoSoundHint() {
         SharedPreferences preferences = MessagesController.getGlobalMainSettings();
         SharedPreferences.Editor editor = preferences.edit();
         editor.putInt("scheduledOrNoSoundHintShows", 3);
+        editor.apply();
+    }
+
+    public static void removeScheduledHint() {
+        SharedPreferences preferences = MessagesController.getGlobalMainSettings();
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("scheduledHintShows", 3);
         editor.apply();
     }
 
@@ -804,13 +1021,6 @@ public class SharedConfig {
         SharedPreferences preferences = MessagesController.getGlobalMainSettings();
         SharedPreferences.Editor editor = preferences.edit();
         editor.putInt("lockRecordAudioVideoHint", 3);
-        editor.apply();
-    }
-
-    public static void increaseSearchAsListHintShows() {
-        SharedPreferences preferences = MessagesController.getGlobalMainSettings();
-        SharedPreferences.Editor editor = preferences.edit();
-        editor.putInt("searchMessagesAsListHintShows", ++searchMessagesAsListHintShows);
         editor.apply();
     }
 
@@ -874,10 +1084,20 @@ public class SharedConfig {
 
     public static void toggleDebugWebView() {
         debugWebView = !debugWebView;
-        WebView.setWebContentsDebuggingEnabled(debugWebView);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            WebView.setWebContentsDebuggingEnabled(debugWebView);
+        }
         SharedPreferences preferences = MessagesController.getGlobalMainSettings();
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("debugWebView", debugWebView);
+        editor.apply();
+    }
+
+    public static void incrementCallEncryptionHintDisplayed(int count) {
+        callEncryptionHintDisplayedCount += count;
+        SharedPreferences preferences = MessagesController.getGlobalMainSettings();
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("callEncryptionHintDisplayedCount", callEncryptionHintDisplayedCount);
         editor.apply();
     }
 
@@ -890,6 +1110,47 @@ public class SharedConfig {
         SharedPreferences preferences = MessagesController.getGlobalMainSettings();
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("allowBigEmoji", allowBigEmoji);
+        editor.apply();
+    }
+
+    public static void toggleUseSystemBoldFont() {
+        useSystemBoldFont = !useSystemBoldFont;
+        AndroidUtilities.mediumTypeface = null;
+        SharedPreferences preferences = MessagesController.getGlobalMainSettings();
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("useSystemBoldFont", useSystemBoldFont);
+        editor.apply();
+    }
+
+    public static void toggleUseSystemEmoji() {
+        useSystemEmoji = !useSystemEmoji;
+        SharedPreferences preferences = MessagesController.getGlobalMainSettings();
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("useSystemEmoji", useSystemEmoji);
+        editor.apply();
+    }
+
+    public static void toggleForceForumTabs() {
+        forceForumTabs = !forceForumTabs;
+        SharedPreferences preferences = MessagesController.getGlobalMainSettings();
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("forceForumTabs", forceForumTabs);
+        editor.apply();
+    }
+
+    public static void toggleFastWallpaperDisabled() {
+        fastWallpaperDisabled = !fastWallpaperDisabled;
+        SharedPreferences preferences = MessagesController.getGlobalMainSettings();
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("fastWallpaperDisabled", fastWallpaperDisabled);
+        editor.apply();
+    }
+
+    public static void toggleFrameMetricsEnabled() {
+        frameMetricsEnabled = !frameMetricsEnabled;
+        SharedPreferences preferences = MessagesController.getGlobalMainSettings();
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("frameMetricsEnabled", frameMetricsEnabled);
         editor.apply();
     }
 
@@ -976,6 +1237,14 @@ public class SharedConfig {
         editor.apply();
     }
 
+    public static void setSearchEngineType(int value) {
+        searchEngineType = value;
+        SharedPreferences preferences = MessagesController.getGlobalMainSettings();
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("searchEngineType", searchEngineType);
+        editor.apply();
+    }
+
     public static void setNoSoundHintShowed(boolean value) {
         if (noSoundHintShowed == value) {
             return;
@@ -1015,11 +1284,43 @@ public class SharedConfig {
         return raiseToListen && (!speak || raiseToSpeak);
     }
 
-    public static void toggleCustomTabs() {
-        customTabs = !customTabs;
+    public static void toggleCustomTabs(boolean newValue) {
+        customTabs = newValue;
         SharedPreferences preferences = MessagesController.getGlobalMainSettings();
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("custom_tabs", customTabs);
+        editor.apply();
+    }
+
+    public static void toggleInappBrowser() {
+        inappBrowser = !inappBrowser;
+        SharedPreferences preferences = MessagesController.getGlobalMainSettings();
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("inapp_browser", inappBrowser);
+        editor.apply();
+    }
+
+    public static void toggleBrowserAdaptableColors() {
+        adaptableColorInBrowser = !adaptableColorInBrowser;
+        SharedPreferences preferences = MessagesController.getGlobalMainSettings();
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("adaptableBrowser", adaptableColorInBrowser);
+        editor.apply();
+    }
+
+    public static void toggleDebugVideoQualities() {
+        debugVideoQualities = !debugVideoQualities;
+        SharedPreferences preferences = MessagesController.getGlobalMainSettings();
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("debugVideoQualities", debugVideoQualities);
+        editor.apply();
+    }
+
+    public static void toggleLocalInstantView() {
+        onlyLocalInstantView = !onlyLocalInstantView;
+        SharedPreferences preferences = MessagesController.getGlobalMainSettings();
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("onlyLocalInstantView", onlyLocalInstantView);
         editor.apply();
     }
 
@@ -1110,10 +1411,10 @@ public class SharedConfig {
     }
 
     public static void toggleInappCamera() {
-        inAppCamera = !inAppCamera;
+        inappCamera = !inappCamera;
         SharedPreferences preferences = MessagesController.getGlobalMainSettings();
         SharedPreferences.Editor editor = preferences.edit();
-        editor.putBoolean("inappCamera", inAppCamera);
+        editor.putBoolean("inappCamera", inappCamera);
         editor.apply();
     }
 
@@ -1281,10 +1582,10 @@ public class SharedConfig {
     public static void checkSaveToGalleryFiles() {
         Utilities.globalQueue.postRunnable(() -> {
             try {
-                File telegramPath = new File(Environment.getExternalStorageDirectory(), AyuConstants.APP_NAME);
-                File imagePath = new File(telegramPath, AyuConstants.APP_NAME + " Images");
+                File telegramPath = new File(Environment.getExternalStorageDirectory(), "Telegram");
+                File imagePath = new File(telegramPath, "Telegram Images");
                 imagePath.mkdir();
-                File videoPath = new File(telegramPath, AyuConstants.APP_NAME + " Video");
+                File videoPath = new File(telegramPath, "Telegram Video");
                 videoPath.mkdir();
 
                 if (!BuildVars.NO_SCOPED_STORAGE) {
@@ -1339,11 +1640,16 @@ public class SharedConfig {
         preferences.edit().putInt("emojiInteractionsHintCount", emojiInteractionsHintCount).apply();
     }
 
-
     public static void updateDayNightThemeSwitchHintCount(int count) {
         dayNightThemeSwitchHintCount = count;
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("mainconfig", Activity.MODE_PRIVATE);
         preferences.edit().putInt("dayNightThemeSwitchHintCount", dayNightThemeSwitchHintCount).apply();
+    }
+
+    public static void updateStealthModeSendMessageConfirm(int count) {
+        stealthModeSendMessageConfirm = count;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("mainconfig", Activity.MODE_PRIVATE);
+        preferences.edit().putInt("stealthModeSendMessageConfirm", stealthModeSendMessageConfirm).apply();
     }
 
     public final static int PERFORMANCE_CLASS_LOW = 0;
@@ -1427,7 +1733,7 @@ public class SharedConfig {
             performanceClass = PERFORMANCE_CLASS_HIGH;
         }
         if (BuildVars.LOGS_ENABLED) {
-            FileLog.d("device performance info selected_class = " + performanceClass + " (cpu_count = " + cpuCount + ", freq = " + maxCpuFreq + ", memoryClass = " + memoryClass + ", android version " + androidVersion + ", manufacture " + Build.MANUFACTURER + ", screenRefreshRate=" + AndroidUtilities.screenRefreshRate + ")");
+            FileLog.d("device performance info selected_class = " + performanceClass + " (cpu_count = " + cpuCount + ", freq = " + maxCpuFreq + ", memoryClass = " + memoryClass + ", android version " + androidVersion + ", manufacture " + Build.MANUFACTURER + ", screenRefreshRate=" + AndroidUtilities.screenRefreshRate + ", screenMaxRefreshRate=" + AndroidUtilities.screenMaxRefreshRate + ")");
         }
 
         return performanceClass;
@@ -1449,6 +1755,13 @@ public class SharedConfig {
         }
     }
 
+    public static void setStoriesColumnsCount(int count) {
+        if (storiesColumnsCount != count) {
+            storiesColumnsCount = count;
+            ApplicationLoader.applicationContext.getSharedPreferences("mainconfig", Activity.MODE_PRIVATE).edit().putInt("storiesColumnsCount", storiesColumnsCount).apply();
+        }
+    }
+
     public static void setFastScrollHintCount(int count) {
         if (fastScrollHintCount != count) {
             fastScrollHintCount = count;
@@ -1456,8 +1769,13 @@ public class SharedConfig {
         }
     }
 
+    public static void setDontAskManageStorage(boolean b) {
+        dontAskManageStorage = b;
+        ApplicationLoader.applicationContext.getSharedPreferences("mainconfig", Activity.MODE_PRIVATE).edit().putBoolean("dontAskManageStorage", dontAskManageStorage).apply();
+    }
+
     public static boolean canBlurChat() {
-        return true;
+        return getDevicePerformanceClass() >= (Build.VERSION.SDK_INT >= 31 ? PERFORMANCE_CLASS_AVERAGE : PERFORMANCE_CLASS_HIGH) || BuildVars.DEBUG_PRIVATE_VERSION;
     }
 
     public static boolean chatBlurEnabled() {
@@ -1525,6 +1843,25 @@ public class SharedConfig {
                 .apply();
     }
 
+    public static void toggleUseNewBlur() {
+        useNewBlur = !useNewBlur;
+        ApplicationLoader.applicationContext.getSharedPreferences("mainconfig", Activity.MODE_PRIVATE)
+                .edit()
+                .putBoolean("useNewBlur", useNewBlur)
+                .apply();
+    }
+
+    public static boolean isUsingCamera2(int currentAccount) {
+        return useCamera2Force == null ? !MessagesController.getInstance(currentAccount).androidDisableRoundCamera2 : useCamera2Force;
+    }
+
+    public static void toggleUseCamera2(int currentAccount) {
+        ApplicationLoader.applicationContext.getSharedPreferences("mainconfig", Activity.MODE_PRIVATE)
+                .edit()
+                .putBoolean("useCamera2Force_2", useCamera2Force = !isUsingCamera2(currentAccount))
+                .apply();
+    }
+
 
     @Deprecated
     public static int getLegacyDevicePerformanceClass() {
@@ -1557,4 +1894,20 @@ public class SharedConfig {
         }
         return legacyDevicePerformanceClass;
     }
+
+
+    //DEBUG
+    public static boolean drawActionBarShadow = true;
+
+    private static void loadDebugConfig(SharedPreferences preferences) {
+        drawActionBarShadow = preferences.getBoolean("drawActionBarShadow", true);
+    }
+
+    public static void saveDebugConfig() {
+        SharedPreferences pref = ApplicationLoader.applicationContext.getSharedPreferences("mainconfig", Activity.MODE_PRIVATE);
+        pref.edit().putBoolean("drawActionBarShadow", drawActionBarShadow);
+    }
+
+
+
 }

@@ -63,7 +63,7 @@ public final class AudioCapabilitiesReceiver {
     this.context = context;
     this.listener = Assertions.checkNotNull(listener);
     handler = Util.createHandlerForCurrentOrMainLooper();
-    receiver = new HdmiAudioPlugBroadcastReceiver();
+    receiver = Util.SDK_INT >= 21 ? new HdmiAudioPlugBroadcastReceiver() : null;
     Uri externalSurroundSoundUri = AudioCapabilities.getExternalSurroundSoundGlobalSettingUri();
     externalSurroundSoundSettingObserver =
         externalSurroundSoundUri != null

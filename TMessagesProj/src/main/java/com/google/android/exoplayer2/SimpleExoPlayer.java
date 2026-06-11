@@ -24,10 +24,12 @@ import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.TextureView;
+
 import androidx.annotation.IntRange;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.annotation.VisibleForTesting;
+
 import com.google.android.exoplayer2.analytics.AnalyticsCollector;
 import com.google.android.exoplayer2.analytics.AnalyticsListener;
 import com.google.android.exoplayer2.audio.AudioAttributes;
@@ -48,11 +50,12 @@ import com.google.android.exoplayer2.util.ConditionVariable;
 import com.google.android.exoplayer2.util.PriorityTaskManager;
 import com.google.android.exoplayer2.util.Size;
 import com.google.android.exoplayer2.video.VideoFrameMetadataListener;
+import com.google.android.exoplayer2.video.VideoListener;
 import com.google.android.exoplayer2.video.VideoSize;
 import com.google.android.exoplayer2.video.spherical.CameraMotionListener;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 
-import org.telegram.messenger.Utilities;
+import org.telegram.messenger.DispatchQueue;
 
 import java.util.List;
 
@@ -795,6 +798,11 @@ public class SimpleExoPlayer extends BasePlayer
   }
 
   @Override
+  public void setWorkerQueue(DispatchQueue dispatchQueue) {
+
+  }
+
+  @Override
   @Nullable
   public ExoPlaybackException getPlayerError() {
     blockUntilConstructorFinished();
@@ -1321,5 +1329,16 @@ public class SimpleExoPlayer extends BasePlayer
     // The constructor may be executed on a background thread. Wait with accessing the player from
     // the app thread until the constructor finished executing.
     constructorFinished.blockUninterruptible();
+  }
+
+
+  @Override
+  public void addVideoListener(VideoListener listener) {
+    throw new RuntimeException("NotImplementedError");
+  }
+
+  @Override
+  public void removeVideoListener(VideoListener listener) {
+    throw new RuntimeException("NotImplementedError");
   }
 }

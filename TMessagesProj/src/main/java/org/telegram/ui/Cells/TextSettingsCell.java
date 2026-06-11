@@ -26,6 +26,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.BuildVars;
 import org.telegram.messenger.LocaleController;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.AnimatedEmojiDrawable;
@@ -37,8 +38,6 @@ import org.telegram.ui.Components.RLottieImageView;
 
 import java.util.ArrayList;
 
-import com.exteragram.messenger.ExteraConfig;
-
 public class TextSettingsCell extends FrameLayout {
 
     private Theme.ResourcesProvider resourcesProvider;
@@ -48,7 +47,7 @@ public class TextSettingsCell extends FrameLayout {
     private boolean imageViewIsColorful;
     private BackupImageView valueBackupImageView;
     private ImageView valueImageView;
-    private boolean needDivider;
+    public boolean needDivider;
     private boolean canDisable;
     private boolean drawLoading;
     private int padding;
@@ -81,7 +80,6 @@ public class TextSettingsCell extends FrameLayout {
 
         textView = new TextView(context);
         textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
-        textView.setTypeface(AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_REGULAR));
         textView.setLines(1);
         textView.setMaxLines(1);
         textView.setSingleLine(true);
@@ -93,7 +91,6 @@ public class TextSettingsCell extends FrameLayout {
         valueTextView = new AnimatedTextView(context, true, true, !LocaleController.isRTL);
         valueTextView.setAnimationProperties(.55f, 0, 320, CubicBezierInterpolator.EASE_OUT_QUINT);
         valueTextView.setTextSize(AndroidUtilities.dp(16));
-        valueTextView.setTypeface(AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_REGULAR));
         valueTextView.setGravity((LocaleController.isRTL ? Gravity.LEFT : Gravity.RIGHT) | Gravity.CENTER_VERTICAL);
         valueTextView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteValueText, resourcesProvider));
         addView(valueTextView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.MATCH_PARENT, (LocaleController.isRTL ? Gravity.LEFT : Gravity.RIGHT) | Gravity.TOP, padding, 0, padding, 0));
@@ -115,12 +112,18 @@ public class TextSettingsCell extends FrameLayout {
         return valueImageView;
     }
 
+    private boolean betterLayout = BuildVars.DEBUG_PRIVATE_VERSION;
+    public void setBetterLayout(boolean betterLayout) {
+        // I might break something with this, gonna need to further test
+        this.betterLayout = betterLayout;
+    }
+
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), AndroidUtilities.dp(50) + (needDivider ? 1 : 0));
 
         int availableWidth = getMeasuredWidth() - getPaddingLeft() - getPaddingRight() - AndroidUtilities.dp(34);
-        int width = availableWidth / 2;
+        int width = betterLayout ? availableWidth : availableWidth / 2;
         if (valueImageView.getVisibility() == VISIBLE) {
             valueImageView.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(getMeasuredHeight(), MeasureSpec.EXACTLY));
         }
@@ -131,14 +134,20 @@ public class TextSettingsCell extends FrameLayout {
             } else {
                 imageView.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(getMeasuredHeight(), MeasureSpec.AT_MOST));
             }
+            if (betterLayout) width -= imageView.getMeasuredWidth() + AndroidUtilities.dp(8);
         }
 
         if (valueBackupImageView != null) {
             valueBackupImageView.measure(MeasureSpec.makeMeasureSpec(valueBackupImageView.getLayoutParams().height, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(valueBackupImageView.getLayoutParams().width, MeasureSpec.EXACTLY));
+            if (betterLayout) width -= valueBackupImageView.getMeasuredWidth() + AndroidUtilities.dp(8);
         }
         if (valueTextView.getVisibility() == VISIBLE) {
             valueTextView.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(getMeasuredHeight(), MeasureSpec.EXACTLY));
-            width = availableWidth - valueTextView.getMeasuredWidth() - AndroidUtilities.dp(8);
+            if (betterLayout) {
+                width -= valueTextView.getMeasuredWidth() + AndroidUtilities.dp(8);
+            } else {
+                width = availableWidth - valueTextView.getMeasuredWidth() - AndroidUtilities.dp(8);
+            }
 
             if (valueImageView.getVisibility() == VISIBLE) {
                 MarginLayoutParams params = (MarginLayoutParams) valueImageView.getLayoutParams();
@@ -219,6 +228,10 @@ public class TextSettingsCell extends FrameLayout {
         }
         needDivider = divider;
         setWillNotDraw(!divider);
+    }
+
+    public void setValue(CharSequence value, boolean animated) {
+        valueTextView.setText(value, animated);
     }
 
     public void setIcon(int resId) {
@@ -350,7 +363,7 @@ public class TextSettingsCell extends FrameLayout {
         valueTextView.setAlpha(1f - drawLoadingProgress);
         super.dispatchDraw(canvas);
 
-        if (needDivider && !ExteraConfig.disableDividers) {
+        if (needDivider) {
             int offset = AndroidUtilities.dp(imageView.getVisibility() == View.VISIBLE ? 71 : 20);
             canvas.drawLine(LocaleController.isRTL ? 0 : offset, getMeasuredHeight() - 1, getMeasuredWidth() - (LocaleController.isRTL ? offset : 0), getMeasuredHeight() - 1, Theme.dividerPaint);
         }

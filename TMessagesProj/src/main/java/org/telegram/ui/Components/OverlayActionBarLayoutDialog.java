@@ -35,7 +35,7 @@ public class OverlayActionBarLayoutDialog extends Dialog implements INavigationL
         super(context, R.style.TransparentDialog);
         this.resourcesProvider = resourcesProvider;
 
-        actionBarLayout = INavigationLayout.newLayout(context);
+        actionBarLayout = INavigationLayout.newLayout(context, false);
         actionBarLayout.setFragmentStack(new ArrayList<>());
         actionBarLayout.presentFragment(new INavigationLayout.NavigationParams(new EmptyFragment()).setNoAnimation(true));
         actionBarLayout.setDelegate(this);
@@ -96,7 +96,7 @@ public class OverlayActionBarLayoutDialog extends Dialog implements INavigationL
         Window window = getWindow();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             window.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-        } else {
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             window.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
         }
         window.setWindowAnimations(R.style.DialogNoAnimation);
@@ -118,14 +118,16 @@ public class OverlayActionBarLayoutDialog extends Dialog implements INavigationL
         }
 
         frameLayout.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
-        frameLayout.setOnApplyWindowInsetsListener((v, insets) -> {
-            v.setPadding(0, 0, 0, insets.getSystemWindowInsetBottom());
-            return insets;
-        });
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            frameLayout.setOnApplyWindowInsetsListener((v, insets) -> {
+                v.setPadding(0, 0, 0, insets.getSystemWindowInsetBottom());
+                return insets;
+            });
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             int color = Theme.getColor(Theme.key_windowBackgroundWhite, null, true);
-            AndroidUtilities.setLightNavigationBar(window, ColorUtils.calculateLuminance(color) >= 0.9);
+            AndroidUtilities.setLightNavigationBar(this, ColorUtils.calculateLuminance(color) >= 0.9);
         }
     }
 

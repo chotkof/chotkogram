@@ -12,6 +12,7 @@ import android.animation.Animator;
 import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -27,8 +28,6 @@ import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.RadioButton;
 
 import java.util.ArrayList;
-
-import com.exteragram.messenger.ExteraConfig;
 
 public class RadioCell extends FrameLayout {
 
@@ -77,6 +76,10 @@ public class RadioCell extends FrameLayout {
         addView(radioButton, LayoutHelper.createFrame(22, 22, (LocaleController.isRTL ? Gravity.LEFT : Gravity.RIGHT) | Gravity.TOP, (LocaleController.isRTL ? padding + 1 : 0), 14, (LocaleController.isRTL ? 0 : padding + 1), 0));
     }
 
+    public void setRadioIcon(Drawable icon) {
+        radioButton.setIcon(icon);
+    }
+
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), AndroidUtilities.dp(50) + (needDivider ? 1 : 0));
@@ -90,7 +93,7 @@ public class RadioCell extends FrameLayout {
         textView.setTextColor(color);
     }
 
-    public void setText(String text, boolean checked, boolean divider) {
+    public void setText(CharSequence text, boolean checked, boolean divider) {
         textView.setText(text);
         radioButton.setChecked(checked, false);
         needDivider = divider;
@@ -121,7 +124,7 @@ public class RadioCell extends FrameLayout {
     }
     @Override
     protected void onDraw(Canvas canvas) {
-        if (needDivider && !ExteraConfig.disableDividers) {
+        if (needDivider) {
             canvas.drawLine(LocaleController.isRTL ? 0 : AndroidUtilities.dp(20), getMeasuredHeight() - 1, getMeasuredWidth() - (LocaleController.isRTL ? AndroidUtilities.dp(20) : 0), getMeasuredHeight() - 1, Theme.dividerPaint);
         }
     }

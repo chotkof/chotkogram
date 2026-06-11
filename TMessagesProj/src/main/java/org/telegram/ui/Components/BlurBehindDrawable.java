@@ -45,7 +45,7 @@ public class BlurBehindDrawable {
     private boolean error;
     private boolean animateAlpha = true;
 
-    private final float DOWN_SCALE = 6f;
+    private final float DOWN_SCALE = 15f;
     private int lastH;
     private int lastW;
     private int toolbarH;
@@ -70,6 +70,9 @@ public class BlurBehindDrawable {
     }
 
     public void draw(Canvas canvas) {
+        if (parentView == null || parentView.getMeasuredHeight() == 0 && parentView.getMeasuredWidth() == 0) {
+            return;
+        }
         if (type == 1 && !wasDraw && !animateAlpha) {
             generateBlurredBitmaps();
             invalidate = false;
@@ -120,6 +123,7 @@ public class BlurBehindDrawable {
             canvas.drawBitmap(bitmap[0], 0, 0, emptyPaint);
             canvas.restore();
             wasDraw = true;
+
             canvas.drawColor(0x1a000000);
         }
         canvas.restore();
@@ -195,7 +199,7 @@ public class BlurBehindDrawable {
     }
 
     private int getBlurRadius() {
-        return Math.max(7, Math.max(lastH, lastW) / 180);
+        return 15; // Math.max(7, Math.max(lastH, lastW) / 180);
     }
 
     public void clear() {

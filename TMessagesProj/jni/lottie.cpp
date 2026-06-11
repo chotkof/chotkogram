@@ -2,7 +2,6 @@
 #include <android/bitmap.h>
 #include <cstring>
 #include <rlottie.h>
-#include <lz4.h>
 #include <unistd.h>
 #include <condition_variable>
 #include <atomic>
@@ -163,6 +162,56 @@ JNIEXPORT jlong Java_org_telegram_ui_Components_RLottieDrawable_create(JNIEnv *e
     return (jlong) (intptr_t) info;
 }
 
+JNIEXPORT jlong Java_org_telegram_ui_Components_RLottieDrawable_getFramesCount(JNIEnv *env, jclass clazz, jstring src, jstring json) {
+    auto info = new LottieInfo();
+    char const *srcString = env->GetStringUTFChars(src, nullptr);
+    info->path = srcString;
+    if (json != nullptr) {
+        char const *jsonString = env->GetStringUTFChars(json, nullptr);
+        if (jsonString) {
+            info->animation = rlottie::Animation::loadFromData(jsonString, info->path, nullptr, FitzModifier::None);
+            env->ReleaseStringUTFChars(json, jsonString);
+        }
+    } else {
+        info->animation = rlottie::Animation::loadFromFile(info->path, nullptr, FitzModifier::None);
+    }
+    if (srcString) {
+        env->ReleaseStringUTFChars(src, srcString);
+    }
+    if (info->animation == nullptr) {
+        delete info;
+        return 0;
+    }
+    long framesCount = info->animation->totalFrame();
+    delete info;
+    return (jlong) framesCount;
+}
+
+JNIEXPORT jdouble Java_org_telegram_ui_Components_RLottieDrawable_getDuration(JNIEnv *env, jclass clazz, jstring src, jstring json) {
+    auto info = new LottieInfo();
+    char const *srcString = env->GetStringUTFChars(src, nullptr);
+    info->path = srcString;
+    if (json != nullptr) {
+        char const *jsonString = env->GetStringUTFChars(json, nullptr);
+        if (jsonString) {
+            info->animation = rlottie::Animation::loadFromData(jsonString, info->path, nullptr, FitzModifier::None);
+            env->ReleaseStringUTFChars(json, jsonString);
+        }
+    } else {
+        info->animation = rlottie::Animation::loadFromFile(info->path, nullptr, FitzModifier::None);
+    }
+    if (srcString) {
+        env->ReleaseStringUTFChars(src, srcString);
+    }
+    if (info->animation == nullptr) {
+        delete info;
+        return 0;
+    }
+    double duration = info->animation->duration();
+    delete info;
+    return (jdouble) duration;
+}
+
 JNIEXPORT jlong Java_org_telegram_ui_Components_RLottieDrawable_createWithJson(JNIEnv *env, jclass clazz, jstring json, jstring name, jintArray data, jintArray colorReplacement) {
     std::map<int32_t, int32_t> *colors = nullptr;
     if (colorReplacement != nullptr) {
@@ -243,16 +292,24 @@ JNIEXPORT void Java_org_telegram_ui_Components_RLottieDrawable_replaceColors(JNI
 }
 
 
-JNIEXPORT jint Java_org_telegram_ui_Components_RLottieDrawable_getFrame(JNIEnv *env, jclass clazz, jlong ptr, jint frame, jobject bitmap, jint w, jint h, jint stride, jboolean clear) {
+JNIEXPORT jint Java_org_telegram_ui_Components_RLottieDrawable_getFrame(JNIEnv *env, jclass clazz, jlong ptr, jint frame, jobject bitmap, jboolean clear) {
     if (!ptr || bitmap == nullptr) {
         return 0;
     }
     auto info = (LottieInfo *) (intptr_t) ptr;
 
+    AndroidBitmapInfo bitmapInfo;
+    if (__builtin_expect(AndroidBitmap_getInfo(env, bitmap, &bitmapInfo) != ANDROID_BITMAP_RESULT_SUCCESS, 0)) {
+        return 0;
+    }
+
     void *pixels;
     bool result = false;
     if (AndroidBitmap_lockPixels(env, bitmap, &pixels) >= 0) {
-        Surface surface((uint32_t *) pixels, (size_t) w, (size_t) h, (size_t) stride);
+        Surface surface((uint32_t *) pixels,
+                        static_cast<size_t>(bitmapInfo.width),
+                        static_cast<size_t>(bitmapInfo.height),
+                        static_cast<size_t>(bitmapInfo.stride));
         info->animation->renderSync((size_t) frame, surface, clear, &result);
         AndroidBitmap_unlockPixels(env, bitmap);
     }

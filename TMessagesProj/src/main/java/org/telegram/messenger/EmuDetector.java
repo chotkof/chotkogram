@@ -7,11 +7,11 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.os.Build;
-import androidx.core.content.ContextCompat;
-
 import android.os.Environment;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
+
+import androidx.core.content.ContextCompat;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -177,7 +177,27 @@ public class EmuDetector {
     }
 
     public boolean detect() {
-        // AyuGram: remove emulator detection
+        if (detected) {
+            return detectResult;
+        }
+        try {
+            detected = true;
+            if (!detectResult) {
+                detectResult = checkBasic();
+            }
+            if (!detectResult) {
+                detectResult = checkAdvanced();
+            }
+            if (!detectResult) {
+                detectResult = checkPackageName();
+            }
+            if (!detectResult) {
+                detectResult = EmuInputDevicesDetector.detect();
+            }
+            return detectResult;
+        } catch (Exception ignore) {
+
+        }
         return false;
     }
 
@@ -195,6 +215,7 @@ public class EmuDetector {
                         || Build.HARDWARE.toLowerCase().contains("vbox86")
                         || Build.HARDWARE.toLowerCase().contains("android_x86")
                         || Build.HARDWARE.toLowerCase().contains("nox")
+                        || Build.HARDWARE.toLowerCase().contains("ranchu")
                         || Build.PRODUCT.equals("sdk")
                         || Build.PRODUCT.equals("google_sdk")
                         || Build.PRODUCT.equals("sdk_x86")

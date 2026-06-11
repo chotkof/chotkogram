@@ -11,23 +11,35 @@ package org.telegram.messenger;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.Process;
 import android.os.SystemClock;
 
 import java.util.concurrent.CountDownLatch;
 
 public class DispatchQueue extends Thread {
 
+    private static final int THREAD_PRIORITY_DEFAULT = -1000;
+
     private volatile Handler handler = null;
-    private final CountDownLatch syncLatch = new CountDownLatch(1);
+    private CountDownLatch syncLatch = new CountDownLatch(1);
     private long lastTaskTime;
     private static int indexPointer = 0;
     public final int index = indexPointer++;
+    private int threadPriority = THREAD_PRIORITY_DEFAULT;
 
     public DispatchQueue(final String threadName) {
         this(threadName, true);
     }
 
     public DispatchQueue(final String threadName, boolean start) {
+        setName(threadName);
+        if (start) {
+            start();
+        }
+    }
+
+    public DispatchQueue(final String threadName, boolean start, int priority) {
+        this.threadPriority = priority;
         setName(threadName);
         if (start) {
             start();
@@ -52,31 +64,40 @@ public class DispatchQueue extends Thread {
             syncLatch.await();
             handler.removeCallbacks(runnable);
         } catch (Exception e) {
-            FileLog.e(e);
+            FileLog.e(e, false);
         }
     }
 
     public void cancelRunnables(Runnable[] runnables) {
         try {
             syncLatch.await();
-            for (Runnable runnable : runnables) {
-                handler.removeCallbacks(runnable);
+            for (int i = 0; i < runnables.length; i++) {
+                handler.removeCallbacks(runnables[i]);
             }
         } catch (Exception e) {
-            FileLog.e(e);
+            FileLog.e(e, false);
         }
     }
 
     public boolean postRunnable(Runnable runnable) {
         lastTaskTime = SystemClock.elapsedRealtime();
-        return  postRunnable(runnable, 0);
+        return postRunnable(runnable, 0);
+    }
+
+    public boolean postToFrontRunnable(Runnable runnable) {
+        try {
+            syncLatch.await();
+        } catch (Exception e) {
+            FileLog.e(e, false);
+        }
+        return handler.postAtFrontOfQueue(runnable);
     }
 
     public boolean postRunnable(Runnable runnable, long delay) {
         try {
             syncLatch.await();
         } catch (Exception e) {
-            FileLog.e(e);
+            FileLog.e(e, false);
         }
         if (delay <= 0) {
             return handler.post(runnable);
@@ -90,7 +111,7 @@ public class DispatchQueue extends Thread {
             syncLatch.await();
             handler.removeCallbacksAndMessages(null);
         } catch (Exception e) {
-            FileLog.e(e);
+            FileLog.e(e, false);
         }
     }
 
@@ -114,6 +135,9 @@ public class DispatchQueue extends Thread {
             return true;
         });
         syncLatch.countDown();
+        if (threadPriority != THREAD_PRIORITY_DEFAULT) {
+            Process.setThreadPriority(threadPriority);
+        }
         Looper.loop();
     }
 

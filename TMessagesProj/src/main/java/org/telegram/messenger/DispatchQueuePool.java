@@ -1,9 +1,13 @@
 package org.telegram.messenger;
 
+import android.os.Build;
+import android.os.Looper;
 import android.os.SystemClock;
 import android.util.SparseIntArray;
 
 import androidx.annotation.UiThread;
+
+import org.telegram.ui.Components.Reactions.HwEmojis;
 
 import java.util.LinkedList;
 
@@ -12,9 +16,9 @@ public class DispatchQueuePool {
     private final LinkedList<DispatchQueue> queues = new LinkedList<>();
     private final SparseIntArray busyQueuesMap = new SparseIntArray();
     private final LinkedList<DispatchQueue> busyQueues = new LinkedList<>();
-    private final int maxCount;
+    private int maxCount;
     private int createdCount;
-    private final int guid;
+    private int guid;
     private int totalTasksCount;
     private boolean cleanupScheduled;
 
@@ -50,6 +54,10 @@ public class DispatchQueuePool {
 
     @UiThread
     public void execute(Runnable runnable) {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            AndroidUtilities.runOnUIThread(() -> execute(runnable));
+            return;
+        }
         DispatchQueue queue;
         if (!busyQueues.isEmpty() && (totalTasksCount / 2 <= busyQueues.size() || queues.isEmpty() && createdCount >= maxCount)) {
             queue = busyQueues.remove(0);
@@ -68,6 +76,11 @@ public class DispatchQueuePool {
         busyQueues.add(queue);
         int count = busyQueuesMap.get(queue.index, 0);
         busyQueuesMap.put(queue.index, count + 1);
+        if (HwEmojis.isHwEnabled()) {
+            queue.setPriority(Thread.MIN_PRIORITY);
+        } else if (queue.getPriority() != Thread.MAX_PRIORITY) {
+            queue.setPriority(Thread.MAX_PRIORITY);
+        }
         queue.postRunnable(() -> {
             runnable.run();
             AndroidUtilities.runOnUIThread(() -> {

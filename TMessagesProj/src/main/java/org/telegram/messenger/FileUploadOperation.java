@@ -11,6 +11,7 @@ package org.telegram.messenger;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.SharedPreferences;
+import android.util.Log;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
 
@@ -25,8 +26,6 @@ import java.io.RandomAccessFile;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 
-import com.exteragram.messenger.ExteraConfig;
-
 public class FileUploadOperation {
 
     private static class UploadCachedResult {
@@ -39,7 +38,6 @@ public class FileUploadOperation {
     private boolean nextPartFirst;
     private int operationGuid;
     private static final int minUploadChunkSize = 128;
-    private static final int minUploadChunkBoostSize = 512;
     private static final int minUploadChunkSlowNetworkSize = 32;
     private static final int initialRequestsCount = 8;
     private static final int initialRequestsSlowNetworkCount = 1;
@@ -55,7 +53,8 @@ public class FileUploadOperation {
     private int state;
     private byte[] readBuffer;
     private FileUploadOperationDelegate delegate;
-    private SparseIntArray requestTokens = new SparseIntArray();
+    public final SparseIntArray requestTokens = new SparseIntArray();
+    public final ArrayList<Integer> uiRequestTokens = new ArrayList<>();
     private int currentPartNum;
     private long currentFileId;
     private long totalFileSize;
@@ -84,6 +83,8 @@ public class FileUploadOperation {
     private SparseArray<UploadCachedResult> cachedResults = new SparseArray<>();
     private boolean[] recalculatedEstimatedSize = {false, false};
     protected long lastProgressUpdateTime;
+
+    public volatile boolean caughtPremiumFloodWait;
 
     public interface FileUploadOperationDelegate {
         void didFinishUploadingFile(FileUploadOperation operation, TLRPC.InputFile inputFile, TLRPC.InputEncryptedFile inputEncryptedFile, byte[] key, byte[] iv);
@@ -162,6 +163,7 @@ public class FileUploadOperation {
                 }
             }
         });
+        AndroidUtilities.runOnUIThread(() -> uiRequestTokens.clear());
     }
 
     public void cancel() {
@@ -189,7 +191,7 @@ public class FileUploadOperation {
                 remove(fileKey + "_id").
                 remove(fileKey + "_iv").
                 remove(fileKey + "_key").
-                remove(fileKey + "_ivc").apply();
+                remove(fileKey + "_ivc").commit();
         try {
             if (stream != null) {
                 stream.close();
@@ -244,7 +246,7 @@ public class FileUploadOperation {
             editor.putString(fileKey + "_ivc", Utilities.bytesToHex(ivChange));
             editor.putString(fileKey + "_key", Utilities.bytesToHex(key));
         }
-        editor.apply();
+        editor.commit();
     }
 
     private void calcTotalPartsCount() {
@@ -307,7 +309,7 @@ public class FileUploadOperation {
                 if (AccountInstance.getInstance(currentAccount).getUserConfig().isPremium() && totalFileSize > FileLoader.DEFAULT_MAX_FILE_SIZE) {
                     maxUploadParts = MessagesController.getInstance(currentAccount).uploadMaxFilePartsPremium;
                 }
-                uploadChunkSize = (int) Math.max(slowNetwork ? minUploadChunkSlowNetworkSize : ExteraConfig.uploadSpeedBoost ? minUploadChunkBoostSize : minUploadChunkSize, (totalFileSize + 1024L * maxUploadParts - 1) / (1024L * maxUploadParts));
+                uploadChunkSize = (int) Math.max(slowNetwork ? minUploadChunkSlowNetworkSize : minUploadChunkSize, (totalFileSize + 1024L * maxUploadParts - 1) / (1024L * maxUploadParts));
                 if (1024 % uploadChunkSize != 0) {
                     int chunkSize = 64;
                     while (uploadChunkSize > chunkSize) {
@@ -570,6 +572,7 @@ public class FileUploadOperation {
                 freeRequestIvs.add(currentRequestIv);
             }
             requestTokens.delete(requestNumFinal);
+            AndroidUtilities.runOnUIThread(() -> uiRequestTokens.remove((Integer) requestToken[0]));
             if (response instanceof TLRPC.TL_boolTrue) {
                 if (state != 1) {
                     return;
@@ -647,7 +650,7 @@ public class FileUploadOperation {
                                 if (isEncrypted) {
                                     editor.putString(fileKey + "_ivc", Utilities.bytesToHex(ivToSave));
                                 }
-                                editor.apply();
+                                editor.commit();
                             }
                         } else {
                             UploadCachedResult result = new UploadCachedResult();
@@ -673,8 +676,9 @@ public class FileUploadOperation {
             }
         }), forceSmallFile ? ConnectionsManager.RequestFlagCanCompress : 0, ConnectionsManager.DEFAULT_DATACENTER_ID, connectionType, true);
         if (BuildVars.LOGS_ENABLED) {
-            FileLog.d("debug_uploading: " + " send reqId " + requestToken + " " + uploadingFilePath);
+            FileLog.d("debug_uploading: " + " send reqId " + requestToken[0] + " " + uploadingFilePath + " file_part=" + currentRequestPartNum + " isBig=" + isBigFile + " file_id=" + currentFileId);
         }
         requestTokens.put(requestNumFinal, requestToken[0]);
+        AndroidUtilities.runOnUIThread(() -> uiRequestTokens.add(requestToken[0]));
     }
 }

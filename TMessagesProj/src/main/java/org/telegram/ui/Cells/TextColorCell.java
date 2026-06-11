@@ -27,15 +27,12 @@ import org.telegram.ui.Components.LayoutHelper;
 
 import java.util.ArrayList;
 
-import com.exteragram.messenger.ExteraConfig;
-
 public class TextColorCell extends FrameLayout {
 
     private Theme.ResourcesProvider resourcesProvider;
     private TextView textView;
     private boolean needDivider;
     private int currentColor;
-    private float alpha = 1.0f;
 
     private static Paint colorPaint;
 
@@ -64,19 +61,6 @@ public class TextColorCell extends FrameLayout {
         addView(textView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, 21, 0, 21, 0));
     }
 
-    @Keep
-    @Override
-    public void setAlpha(float value) {
-        alpha = value;
-        invalidate();
-    }
-
-    @Keep
-    @Override
-    public float getAlpha() {
-        return alpha;
-    }
-
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(MeasureSpec.makeMeasureSpec(MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(AndroidUtilities.dp(50) + (needDivider ? 1 : 0), MeasureSpec.EXACTLY));
@@ -103,12 +87,11 @@ public class TextColorCell extends FrameLayout {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        if (needDivider && !ExteraConfig.disableDividers) {
+        if (needDivider) {
             canvas.drawLine(LocaleController.isRTL ? 0 : AndroidUtilities.dp(20), getMeasuredHeight() - 1, getMeasuredWidth() - (LocaleController.isRTL ? AndroidUtilities.dp(20) : 0), getMeasuredHeight() - 1, Theme.dividerPaint);
         }
         if (currentColor != 0) {
             colorPaint.setColor(currentColor);
-            colorPaint.setAlpha((int) (255 * alpha));
             canvas.drawCircle(LocaleController.isRTL ? AndroidUtilities.dp(33) : getMeasuredWidth() - AndroidUtilities.dp(33), getMeasuredHeight() / 2, AndroidUtilities.dp(10), colorPaint);
         }
     }

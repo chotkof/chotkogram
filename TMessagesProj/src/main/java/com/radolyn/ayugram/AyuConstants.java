@@ -1,5 +1,5 @@
 /*
- * This is the source code of AyuGram for Android.
+ * This is the source code of ChotkoGram for Android.
  *
  * We do not and cannot prevent the use of our code,
  * but be respectful and credit the original author.
@@ -13,8 +13,8 @@ import org.telegram.messenger.BuildVars;
 
 public class AyuConstants {
     public static final long[] OFFICIAL_CHANNELS = {
-            1905581924, // @ayugramchat
-            1794457129, // @ayugram1338
+            1905581924,
+            1794457129,
             1434550607, // @radolyn
     };
     public static final long[] DEVS = {
@@ -44,13 +44,13 @@ public class AyuConstants {
     public static final int AYUSYNC_LAST_RECEIVED_CHANGED = 6972;
     public static final int AYUSYNC_REGISTER_STATUS_CODE_CHANGED = 6973;
 
-    public static String DEFAULT_DELETED_MARK = "🧹";
+    public static String DEFAULT_DELETED_MARK = "\uD83E\uDDF9";
     public static String DEFAULT_AYUSYNC_SERVER = BuildVars.isBetaApp() ? "ayusync-dev.radolyn.com:5000" : "ayusync.cloud";
 
     public static String AYU_DATABASE = "ayu-data";
 
-    public static String APP_GITHUB = "AyuGram/AyuGram4A";
-    public static String APP_NAME = "AyuGram";
+    public static String APP_GITHUB = "ChotkoGram/ChotkoGram";
+    public static String APP_NAME = "ChotkoGram";
 
     public static String BUILD_STORE_PACKAGE = "com.android.vending";
     public static String BUILD_ORIGINAL_PACKAGE = "org.telegram.messenger";

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="Appearance">Appearance</string>
+    <string name="PeopleNearby">People Nearby</string>
+    <string name="FilterUnread">Unread</string>
+    <string name="ChannelDiscuss">Discussion</string>
+
+    <color name="black">#ff000000</color>
+    <color name="white">#ffffffff</color>
+    <color name="ic_background">#ff40a7e3</color>
+    <color name="ic_background_sus">#ffffde2a</color>
+    <color name="mRed200">#ffef9a9a</color>
+    <color name="mRed500">#fff44336</color>
+    <color name="mRed800">#ffc62828</color>
+    <color name="mGreen200">#ffa5d6a7</color>
+    <color name="mGreen500">#ff4caf50</color>
+    <color name="mGreen800">#ff2e7d32</color>
+</resources>

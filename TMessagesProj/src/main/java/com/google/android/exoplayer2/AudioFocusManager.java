@@ -360,7 +360,11 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
         // audio recording or speech recognition'.
         // Assistant is considered as both recording and notifying developer
       case C.USAGE_ASSISTANT:
-        return AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE;
+        if (Util.SDK_INT >= 19) {
+          return AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE;
+        } else {
+          return AUDIOFOCUS_GAIN_TRANSIENT;
+        }
 
         // Special usages:
       case C.USAGE_ASSISTANCE_ACCESSIBILITY:
