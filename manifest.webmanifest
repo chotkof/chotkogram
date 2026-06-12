@@ -1,0 +1,19 @@
+{
+  "name": "ChotkoGram",
+  "short_name": "ChotkoGram",
+  "description": "Неофициальный open source клиент Telegram для Android.",
+  "lang": "ru",
+  "start_url": "/chotkogram/",
+  "scope": "/chotkogram/",
+  "display": "standalone",
+  "background_color": "#030303",
+  "theme_color": "#030303",
+  "icons": [
+    {
+      "src": "pills.png",
+      "sizes": "600x400",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

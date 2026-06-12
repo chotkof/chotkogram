@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>ChotkoGram - unofficial Telegram client for Android.</title>
+    <meta name="description" content="ChotkoGram — неофициальный open source клиент Telegram для Android: без рекламы, с сохранением удаленных сообщений, быстрым интерфейсом и прямой загрузкой APK.">
+    <meta name="keywords" content="ChotkoGram, Telegram клиент, клиент Telegram Android, Telegram mod, без рекламы, сохранение удаленных сообщений, APK Telegram, open source">
+    <meta name="author" content="Chotko">
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+    <meta name="googlebot" content="index, follow">
+    <meta name="yandex" content="index, follow">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="theme-color" content="#030303">
+    <meta name="msapplication-TileColor" content="#030303">
+    <meta name="msapplication-TileImage" content="pills.png">
+    <link rel="canonical" href="https://chotkof.github.io/chotkogram/">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" type="image/png" sizes="32x32" href="pills.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="pills.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="pills.png">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:site_name" content="ChotkoGram">
+    <meta property="og:title" content="ChotkoGram — Telegram клиент без рекламы">
+    <meta property="og:description" content="Неофициальный open source клиент Telegram для Android: сохранение удаленных сообщений, ноль рекламы и быстрый интерфейс.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://chotkof.github.io/chotkogram/">
+    <meta property="og:image" content="https://chotkof.github.io/chotkogram/pills.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="600">
+    <meta property="og:image:height" content="400">
+    <meta property="og:image:alt" content="ChotkoGram download screen">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="ChotkoGram — неофициальный Telegram клиент">
+    <meta name="twitter:description" content="Android APK, open source, без рекламы и с расширенными возможностями Telegram.">
+    <meta name="twitter:image" content="https://chotkof.github.io/chotkogram/pills.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=Syncopate:wght@700;800&display=swap" rel="stylesheet">
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "ChotkoGram",
+        "alternateName": "ChotkoGram Brutal Edition",
+        "applicationCategory": "CommunicationApplication",
+        "operatingSystem": "Android",
+        "downloadUrl": "https://ts.buzzheavier.com/d/k0dhzysgfpb1?v=ooOuS3qa2igw5-Uui7d7u8y_gkLpiIkKdBMYsEghvAQ3BvGMdT6iPXk61l_haHWXRBuwSUNPME9kbNIQXvkLeEg1o3ysWyYcaM3qiwfncoQ5HfQYfEO7jor5b3SVg1TljAuq2tDZg6E3xUoGSEGW",
+        "url": "https://chotkof.github.io/chotkogram/",
+        "image": "https://chotkof.github.io/chotkogram/pills.png",
+        "description": "Неофициальный open source клиент Telegram для Android с сохранением удаленных сообщений, отключенной рекламой и быстрым интерфейсом.",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "author": {
+            "@type": "Person",
+            "name": "Chotko"
+        }
+    }
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #030303;
+            --panel: #0b0d0a;
+            --fg: #e0e0e0;
+            --muted: #969696;
+            --accent: #ccff00;
+            --secondary: #ff00ff;
+            --danger: #ff3333;
+            --easing: cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        html {
+            scroll-behavior: smooth;
+            background: var(--bg);
+            cursor: none;
+        }
+
+        /* --- GRAIN OVERLAY --- */
+        .noise {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9998;
+            opacity: 0.025;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 320 320' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.42' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' opacity='0.55' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        /* --- SCROLL CONTENT WRAPPER --- */
+        #scroll-content {
+            will-change: transform;
+        }
+
+        body {
+            background:
+                radial-gradient(circle at 20% 8%, rgba(204, 255, 0, 0.12), transparent 34rem),
+                radial-gradient(circle at 88% 26%, rgba(255, 0, 255, 0.08), transparent 30rem),
+                linear-gradient(180deg, #050704 0%, #030303 42%, #080808 100%);
+            color: var(--fg);
+            font-family: 'Space Grotesk', sans-serif;
+            overflow-x: hidden;
+            overflow-y: scroll;
+            min-width: 320px;
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
+            cursor: none;
+        }
+
+        a,
+        button {
+            -webkit-tap-highlight-color: transparent;
+            cursor: none;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        @media (hover: hover) and (pointer: fine) {
+            *,
+            *::before,
+            *::after {
+                cursor: none !important;
+            }
+        }
+
+        /* ==================== ПК СТИЛИ (по умолчанию) ==================== */
+        /* --- CURSOR (только для ПК) --- */
+        #cursor {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 20px;
+            height: 20px;
+            background: var(--accent);
+            border-radius: 50%;
+            pointer-events: none;
+            mix-blend-mode: difference;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+            transition: width 0.3s var(--easing), height 0.3s var(--easing);
+        }
+
+        #cursor.magnet {
+            width: 90px;
+            height: 90px;
+            background: transparent;
+            border: 1px solid var(--accent);
+        }
+
+        #cursor.magnet::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 10px;
+            height: 10px;
+            background: var(--accent);
+            border-radius: 50%;
+        }
+
+        /* --- NAVBAR (ПК версия) --- */
+        .brutal-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 3rem 4rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            transition: padding 0.7s var(--easing), top 0.7s var(--easing), width 0.7s var(--easing), background 0.5s var(--easing), border-radius 0.7s var(--easing);
+            mix-blend-mode: exclusion;
+            transform-style: preserve-3d;
+            perspective: 1200px;
+        }
+
+        .brutal-nav.scrolled {
+            top: 1.5rem;
+            padding: 0.8rem 2rem;
+            width: auto;
+            min-width: 500px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 10, 10, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            mix-blend-mode: normal;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+        }
+
+        /* Logo Glitch */
+        .nav-logo {
+            font-family: 'Syncopate', sans-serif;
+            font-weight: 800;
+            font-size: 2rem;
+            letter-spacing: -2px;
+            color: #fff;
+            user-select: none;
+            position: relative;
+            text-decoration: none;
+        }
+
+        .nav-logo:hover {
+            animation: glitch-anim 0.3s infinite;
+        }
+
+        @keyframes glitch-anim {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 3rem;
+            list-style: none;
+            align-items: center;
+        }
+
+        .nav-link {
+            position: relative;
+            font-weight: 500;
+            font-size: 0.95rem;
+            text-decoration: none;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 10px;
+        }
+
+        .nav-link::before {
+            content: '>';
+            position: absolute;
+            left: -10px;
+            opacity: 0;
+            transition: all 0.2s;
+            color: var(--accent);
+        }
+
+        .nav-link:hover::before {
+            opacity: 1;
+            left: 0;
+        }
+
+        .nav-link:hover {
+            padding-left: 15px;
+        }
+
+        .cta-btn {
+            position: relative;
+            padding: 0.8rem 2rem;
+            background: #fff;
+            color: #000;
+            font-weight: 700;
+            border: 1px solid transparent;
+            text-transform: uppercase;
+            font-family: 'Space Grotesk';
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            cursor: pointer;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+
+        .cta-btn::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--accent);
+            transform: translateX(-101%);
+            transition: transform 0.4s cubic-bezier(0.7, 0, 0.3, 1);
+            z-index: 1;
+        }
+
+        .cta-btn span {
+            position: relative;
+            z-index: 2;
+            transition: color 0.3s;
+        }
+
+        .cta-btn:hover span {
+            color: #000;
+        }
+
+        .cta-btn:hover::after {
+            transform: translateX(0);
+        }
+
+        /* --- HERO --- */
+        .hero {
+            min-height: 100svh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            text-align: center;
+            padding: 8rem 2rem 7rem;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at 50% 20%, rgba(204, 255, 0, 0.16), transparent 34rem),
+                radial-gradient(circle at 15% 85%, rgba(255, 0, 255, 0.12), transparent 26rem);
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            inset: 7rem 8vw auto;
+            height: 58vh;
+            max-height: 620px;
+            border: 1px solid rgba(204, 255, 0, 0.22);
+            background: linear-gradient(135deg, rgba(204, 255, 0, 0.08), rgba(255, 255, 255, 0.015));
+            transform: rotate(-1.5deg);
+            z-index: 0;
+        }
+
+        .hero-title-container {
+            perspective: 1000px;
+            transform-style: preserve-3d;
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero h1 {
+            font-family: 'Syncopate', sans-serif;
+            font-size: 10vw;
+            line-height: 0.9;
+            text-transform: uppercase;
+            font-weight: 800;
+            color: transparent;
+            -webkit-text-stroke: 2px var(--accent);
+            position: relative;
+            z-index: 10;
+            transform: translateZ(50px);
+        }
+
+        .hero h1 .word {
+            display: inline-block;
+        }
+
+        .hero h1 .char {
+            display: inline-block;
+            transition: color 0.2s, transform 0.2s;
+        }
+
+        .hero h1:hover .char {
+            color: var(--accent);
+            -webkit-text-stroke: 0px;
+            transform: translateZ(20px);
+        }
+
+        .hero-sub {
+            font-size: 1.4rem;
+            margin-top: 2rem;
+            color: var(--muted);
+            letter-spacing: 2px;
+            position: relative;
+            z-index: 2;
+            max-width: 880px;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            align-items: center;
+            margin-top: 2rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        .ghost-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 47px;
+            padding: 0.8rem 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            color: #fff;
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(8px);
+            transition: transform 0.25s var(--easing), border-color 0.25s var(--easing), background 0.25s var(--easing);
+        }
+
+        .ghost-btn:hover {
+            transform: translateY(-3px);
+            border-color: var(--accent);
+            background: rgba(204, 255, 0, 0.08);
+        }
+
+        /* Running Text Tape */
+        .tape-wrapper {
+            position: absolute;
+            bottom: 5vh;
+            left: -10%;
+            width: 120%;
+            background: var(--accent);
+            color: #000;
+            transform: rotate(-2deg);
+            padding: 10px 0;
+            border-top: 3px solid #000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 3;
+        }
+
+        .tape-text {
+            font-family: 'Syncopate';
+            font-size: 1.8rem;
+            font-weight: 800;
+            white-space: nowrap;
+            animation: tapeScroll 12s linear infinite;
+        }
+
+        @keyframes tapeScroll {
+            to { transform: translateX(-50%); }
+        }
+
+        /* --- SECTIONS --- */
+        .section-dark {
+            min-height: 80vh;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent),
+                #080808;
+            display: flex;
+            align-items: center;
+            padding: 8vw;
+            border-top: 1px solid #222;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .big-text {
+            font-size: clamp(2rem, 4vw, 4.9rem);
+            line-height: 1.2;
+            font-weight: 300;
+            color: #444;
+            text-align: center;
+            max-width: 1200px;
+        }
+
+        .big-text span {
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        /* Features Grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-top: 4rem;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .feature-card {
+            background:
+                linear-gradient(145deg, rgba(204, 255, 0, 0.06), rgba(255, 255, 255, 0.02)),
+                var(--panel);
+            padding: 2rem;
+            border: 1px solid rgba(204, 255, 0, 0.2);
+            transition: all 0.3s var(--easing);
+            text-align: left;
+            border-radius: 8px;
+            min-height: 230px;
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+        }
+
+        .feature-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-10px);
+            background: rgba(204, 255, 0, 0.05);
+        }
+
+        .feature-icon {
+            width: 74px;
+            height: 74px;
+            margin-bottom: 1rem;
+            display: grid;
+            place-items: center;
+            border: 1px solid rgba(204, 255, 0, 0.28);
+            border-radius: 8px;
+            background:
+                radial-gradient(circle at 50% 50%, rgba(204, 255, 0, 0.14), transparent 62%),
+                rgba(0, 0, 0, 0.28);
+            overflow: hidden;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.32);
+        }
+
+        .feature-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 10px;
+            filter: drop-shadow(0 0 14px rgba(204, 255, 0, 0.22));
+        }
+
+        .feature-card h3 {
+            font-family: 'Syncopate';
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            color: var(--accent);
+        }
+
+        .feature-card p {
+            color: #bdbdbd;
+            line-height: 1.55;
+        }
+
+        .seo-copy {
+            width: 100%;
+            max-width: 960px;
+            color: #c8c8c8;
+            line-height: 1.8;
+            font-size: clamp(1rem, 1.5vw, 1.2rem);
+            text-align: center;
+        }
+
+        .seo-copy h2 {
+            color: var(--accent);
+            font-family: 'Syncopate';
+            font-size: clamp(1.5rem, 3vw, 3rem);
+            margin-bottom: 1.5rem;
+            line-height: 1.15;
+        }
+
+        /* Pill Modal */
+        #download-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(circle at 25% 45%, rgba(255, 0, 0, 0.22), transparent 24rem),
+                radial-gradient(circle at 75% 45%, rgba(0, 204, 255, 0.22), transparent 24rem),
+                rgba(0, 0, 0, 0.96);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            backdrop-filter: blur(12px);
+        }
+
+        #download-modal::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background:
+                linear-gradient(90deg, rgba(255, 0, 0, 0.1), transparent 42%, transparent 58%, rgba(0, 204, 255, 0.1)),
+                repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 8px);
+            opacity: 0.55;
+        }
+
+        .modal-content {
+            background:
+                linear-gradient(135deg, rgba(255, 0, 0, 0.12), transparent 28%),
+                linear-gradient(225deg, rgba(0, 204, 255, 0.12), transparent 28%),
+                #050505;
+            padding: 2.5rem 3rem 2rem;
+            max-width: 820px;
+            width: 90%;
+            text-align: center;
+            border: 2px solid var(--accent);
+            position: relative;
+            border-radius: 10px;
+            box-shadow:
+                0 0 0 1px rgba(255, 255, 255, 0.09) inset,
+                0 0 60px rgba(204, 255, 0, 0.18),
+                0 40px 120px rgba(0, 0, 0, 0.8);
+            overflow: hidden;
+        }
+
+        .modal-content::before {
+            content: 'SELECT DOWNLOAD PATH';
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(204, 255, 0, 0.55);
+            font-size: 0.68rem;
+            letter-spacing: 4px;
+            white-space: nowrap;
+        }
+
+        .modal-content::after {
+            content: '';
+            position: absolute;
+            inset: 14px;
+            pointer-events: none;
+            border: 1px solid rgba(204, 255, 0, 0.24);
+            border-radius: 6px;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 2rem;
+            cursor: pointer;
+            color: #888;
+            transition: color 0.3s;
+            z-index: 5;
+        }
+
+        .modal-close:hover {
+            color: var(--danger);
+        }
+
+        .modal-title {
+            font-family: 'Syncopate';
+            font-size: clamp(1.7rem, 4vw, 3.4rem);
+            margin: 1rem 0 0.35rem;
+            color: var(--accent);
+            text-shadow: 0 0 24px rgba(204, 255, 0, 0.45);
+        }
+
+        .modal-subtitle {
+            color: #cfcfcf;
+            font-size: 0.9rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 1.4rem;
+        }
+
+        .pills-image-container {
+            position: relative;
+            margin: 1rem auto;
+            max-width: 640px;
+            background:
+                radial-gradient(circle at 20% 80%, rgba(255, 0, 0, 0.2), transparent 32%),
+                radial-gradient(circle at 82% 80%, rgba(0, 204, 255, 0.2), transparent 32%),
+                #000;
+            border-radius: 8px;
+            overflow: visible;
+            border: 1px solid rgba(204, 255, 0, 0.42);
+            box-shadow:
+                0 0 40px rgba(204, 255, 0, 0.12),
+                0 0 60px rgba(255, 0, 0, 0.1),
+                0 0 60px rgba(0, 204, 255, 0.1);
+        }
+
+        .pills-image-container::before {
+            content: 'APK';
+            position: absolute;
+            left: 1.2rem;
+            top: 1rem;
+            z-index: 10;
+            color: #ff4d4d;
+            font-family: 'Syncopate';
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            text-shadow: 0 0 18px rgba(255, 0, 0, 0.8);
+        }
+
+        .pills-image-container::after {
+            content: 'TELEGRAM';
+            position: absolute;
+            right: 1.2rem;
+            top: 1rem;
+            z-index: 10;
+            color: #61ddff;
+            font-family: 'Syncopate';
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            text-shadow: 0 0 18px rgba(0, 204, 255, 0.8);
+        }
+        
+        .pills-canvas {
+            display: block;
+            margin: 0 auto;
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }
+        
+        .pill-zone {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 20;
+            transition: transform 0.2s, filter 0.2s;
+        }
+
+        .pill-zone:hover {
+            filter: brightness(1.6);
+            transform: translate(-50%, -50%) scale(1.18);
+        }
+        
+        .red-zone {
+            background: radial-gradient(circle, rgba(255, 0, 0, 0.4), transparent);
+            border: 2px solid #ff0000;
+            animation: radar-red 2s infinite;
+        }
+        
+        .blue-zone {
+            background: radial-gradient(circle, rgba(0, 204, 255, 0.4), transparent);
+            border: 2px solid #00ccff;
+            animation: radar-blue 2s infinite;
+        }
+        
+        @keyframes radar-red {
+            0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.5); }
+            100% { box-shadow: 0 0 0 25px rgba(255, 0, 0, 0); }
+        }
+        
+        @keyframes radar-blue {
+            0% { box-shadow: 0 0 0 0 rgba(0, 204, 255, 0.5); }
+            100% { box-shadow: 0 0 0 25px rgba(0, 204, 255, 0); }
+        }
+        
+        .hand-hint {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.3rem;
+            animation: pulse 1.5s infinite;
+            pointer-events: none;
+            z-index: 25;
+            background: rgba(0, 0, 0, 0.82);
+            backdrop-filter: blur(4px);
+            padding: 0.65rem 1.1rem;
+            border-radius: 8px;
+            border: 1px solid rgba(204, 255, 0, 0.5);
+            white-space: nowrap;
+            box-shadow: 0 0 22px rgba(204, 255, 0, 0.12);
+        }
+        
+        .left-hint .hint-text { color: #ff4444; }
+        .right-hint .hint-text { color: var(--accent); }
+
+        .download-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1.2rem;
+            text-align: left;
+        }
+
+        .download-option {
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 8px;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.035);
+            color: inherit;
+            font-family: inherit;
+            text-align: left;
+            transition: transform 0.25s var(--easing), border-color 0.25s var(--easing), background 0.25s var(--easing), box-shadow 0.25s var(--easing);
+        }
+
+        .download-option:hover {
+            transform: translateY(-4px);
+            background: rgba(255, 255, 255, 0.065);
+        }
+
+        .download-option strong {
+            display: block;
+            font-family: 'Syncopate';
+            font-size: 0.85rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .download-option span {
+            color: #bdbdbd;
+            font-size: 0.86rem;
+            line-height: 1.45;
+        }
+
+        .download-option.red strong { color: #ff4d4d; }
+        .download-option.blue strong { color: #61ddff; }
+
+        .download-option.red:hover {
+            border-color: rgba(255, 77, 77, 0.75);
+            box-shadow: 0 0 26px rgba(255, 0, 0, 0.18);
+        }
+
+        .download-option.blue:hover {
+            border-color: rgba(97, 221, 255, 0.75);
+            box-shadow: 0 0 26px rgba(0, 204, 255, 0.18);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.8; transform: translateY(0); }
+            50% { opacity: 1; transform: translateY(-5px); }
+        }
+
+        footer {
+            height: 40vh;
+            background: var(--fg);
+            color: var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            border-top: 4px solid var(--accent);
+        }
+
+        footer h2 {
+            font-family: 'Syncopate';
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        footer a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            color: var(--accent);
+        }
+
+        /* ==================== МОБИЛЬНАЯ АДАПТАЦИЯ (ТОЛЬКО ДЛЯ ТЕЛЕФОНОВ) ==================== */
+        @media (max-width: 768px) {
+            /* Отключаем кастомный курсор на телефонах */
+            #cursor {
+                display: none;
+            }
+            
+            body {
+                cursor: auto;
+            }
+
+            a,
+            button,
+            .modal-close,
+            .pill-zone {
+                cursor: pointer;
+            }
+            
+            /* Адаптивная навигация */
+            .brutal-nav {
+                padding: 0.8rem 1rem;
+                mix-blend-mode: normal;
+                background: rgba(3, 3, 3, 0.9);
+                backdrop-filter: blur(10px);
+                border-bottom: 1px solid rgba(204, 255, 0, 0.2);
+                gap: 0.75rem;
+            }
+            
+            .brutal-nav.scrolled {
+                top: 0;
+                padding: 0.7rem 1.2rem;
+                min-width: auto;
+                width: 94%;
+                left: 3%;
+                transform: translateX(0);
+                border-radius: 40px;
+                background: rgba(10, 10, 10, 0.95);
+            }
+            
+            .nav-logo {
+                font-size: clamp(0.95rem, 4vw, 1.2rem);
+                letter-spacing: -1px;
+            }
+            
+            .nav-menu {
+                gap: 0.65rem;
+            }
+            
+            .nav-link {
+                font-size: 0.7rem;
+                padding: 8px 4px;
+            }
+            
+            .nav-link::before {
+                display: none;
+            }
+            
+            .cta-btn {
+                min-height: 42px;
+                padding: 0.55rem 0.9rem;
+                font-size: 0.7rem;
+                white-space: nowrap;
+            }
+            
+            /* Hero адаптация */
+            .hero {
+                min-height: 100svh;
+                padding: 6.5rem 1rem 6rem;
+            }
+
+            .hero::before {
+                inset: 6rem 1rem auto;
+                height: 48vh;
+            }
+
+            .hero h1 {
+                font-size: clamp(2.9rem, 15vw, 6rem);
+                -webkit-text-stroke: 1.5px var(--accent);
+            }
+            
+            .hero-sub {
+                font-size: 0.9rem;
+                padding: 0 1rem;
+                line-height: 1.5;
+                letter-spacing: 1px;
+            }
+
+            .hero-actions {
+                flex-direction: column;
+                width: 100%;
+                max-width: 320px;
+            }
+
+            .hero-actions .cta-btn,
+            .ghost-btn {
+                width: 100%;
+            }
+            
+            .tape-text {
+                font-size: 1rem;
+            }
+            
+            /* Текст секций */
+            .big-text {
+                font-size: 7vw;
+            }
+            
+            .section-dark {
+                padding: 3rem 1.5rem;
+                min-height: auto;
+            }
+            
+            /* Сетка фич */
+            .features-grid {
+                gap: 1rem;
+                grid-template-columns: 1fr;
+                margin-top: 2rem;
+            }
+            
+            .feature-card {
+                padding: 1.2rem;
+                min-height: auto;
+                text-align: left;
+            }
+            
+            .feature-card h3 {
+                font-size: 1rem;
+            }
+            
+            .feature-card p {
+                font-size: 0.75rem;
+            }
+            
+            .feature-icon {
+                width: 58px;
+                height: 58px;
+            }
+
+            .feature-icon img {
+                padding: 8px;
+            }
+
+            /* Модалка */
+            #download-modal {
+                align-items: flex-start;
+                padding: 5rem 0.5rem 1rem;
+                overflow-y: auto;
+            }
+
+            .modal-content {
+                padding: 1.5rem;
+                width: 95%;
+                max-height: none;
+            }
+            
+            .modal-title {
+                font-size: 1.3rem;
+            }
+            
+            .pill-zone {
+                width: 55px;
+                height: 55px;
+            }
+
+            .download-options {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+            
+            .hand-hint {
+                display: none;
+            }
+            
+            /* Футер */
+            footer {
+                height: auto;
+                padding: 2rem 1rem;
+            }
+            
+            footer h2 {
+                font-size: 1.8rem;
+            }
+            
+            footer div {
+                gap: 1rem;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            footer p {
+                text-align: center;
+                font-size: 0.85rem;
+                line-height: 1.5;
+            }
+            
+            /* Отключаем hover-эффекты на телефонах */
+            .feature-card:hover {
+                transform: none;
+            }
+            
+            .cta-btn::after {
+                display: none;
+            }
+            
+            .cta-btn:active {
+                background: var(--accent);
+                transform: scale(0.97);
+            }
+            
+            .nav-logo:hover {
+                animation: none;
+            }
+            
+            .hero h1:hover .char {
+                color: transparent;
+                transform: none;
+            }
+        }
+        
+        /* Дополнительно для очень маленьких экранов */
+        @media (max-width: 480px) {
+            .brutal-nav {
+                align-items: center;
+            }
+
+            .nav-menu {
+                display: none;
+            }
+            
+            .big-text {
+                font-size: 8.5vw;
+            }
+
+            .modal-content {
+                padding: 1.2rem 0.9rem;
+            }
+        }
+    </style>
+
+</head>
+<body>
+    <div class="noise"></div>
+    <div id="cursor"></div>
+
+    <nav class="brutal-nav" aria-label="Основная навигация">
+        <a href="#" class="nav-logo magnetic" style="text-decoration: none;">CHOTKO<span style="color: var(--accent);">GRAM</span></a>
+        <ul class="nav-menu">
+            <li><a href="#features" class="nav-link magnetic" data-text="FEATURES">FEATURES</a></li>
+            <li><a href="https://github.com/chotkof/chotkogram" target="_blank" rel="noopener noreferrer" class="nav-link magnetic" data-text="SOURCE">SOURCE</a></li>
+            <li><a href="https://t.me/I_am_Chotko" target="_blank" rel="noopener noreferrer" class="nav-link magnetic" data-text="SUPPORT">SUPPORT</a></li>
+        </ul>
+        <button type="button" class="cta-btn magnetic" onclick="showDownloadModal()"><span>GET IT</span></button>
+    </nav>
+
+    <main id="scroll-content">
+        <section class="hero">
+            <div class="hero-title-container">
+                <h1>
+                    <span class="word">CHOTKO</span>
+                    <span class="word">GRAM</span>
+                </h1>
+            </div>
+            <p class="hero-sub">Unofficial Telegram client for Android: open source, ad-free, with deleted message preservation and direct APK download.</p>
+            <div class="hero-actions">
+                <button type="button" class="cta-btn magnetic" onclick="showDownloadModal()"><span>DOWNLOAD APK</span></button>
+                <a class="ghost-btn magnetic" href="https://github.com/chotkof/chotkogram" target="_blank" rel="noopener noreferrer">SOURCE CODE</a>
+            </div>
+            <div class="tape-wrapper">
+                <div class="tape-text">
+                    ⚡ NO ADS ⚡ SAVES DELETED MSGS ⚡ FREE PREMIUM ⚡ NO CENSORSHIP ⚡ CHOTKOGRAM ⚡
+                </div>
+            </div>
+        </section>
+
+        <section class="section-dark">
+            <p class="big-text">
+                <span>CHOTKOGRAM</span> BREAKS THE RULES. <span>SAVE DELETED MESSAGES</span>. NO ADS. 
+                <span>FREE PREMIUM</span>. BUILT FOR <span>THE UNDERGROUND</span>.
+            </p>
+        </section>
+
+        <section class="section-dark" id="features" aria-labelledby="features-title">
+            <div style="width: 100%; text-align: center;">
+                <h2 class="big-text" id="features-title" style="margin-bottom: 2rem;">BRUTAL <span>FEATURES</span></h2>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon"><img src="pills.png" alt="" loading="lazy"></div>
+                        <h3>SAVE DELETED</h3>
+                        <p>Nothing disappears. Ever. Every message stays in your local vault.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon"><img src="ads.png" alt="" loading="lazy"></div>
+                        <h3>ZERO ADS</h3>
+                        <p>Clean interface. No sponsored crap. Just pure chat.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon"><img src="free.png" alt="" loading="lazy"></div>
+                        <h3>FREE PREMIUM</h3>
+                        <p>All Telegram Premium features. No subscription. Locally unlocked.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon"><img src="rkn.svg" alt="" loading="lazy"></div>
+                        <h3>NO BLOCKS</h3>
+                        <p>Built-in proxy. Works where Telegram is banned.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon"><img src="fast.png" alt="" loading="lazy"></div>
+                        <h3>BLISTERING FAST</h3>
+                        <p>Optimized core. Less battery drain. Instant sync.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon"><img src="open.png" alt="" loading="lazy"></div>
+                        <h3>OPEN SOURCE</h3>
+                        <p>100% transparent. No backdoors. Fork it yourself.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section-dark" id="about">
+            <div class="seo-copy">
+                <h2>Telegram client ChotkoGram</h2>
+                <p>
+                    ChotkoGram is an app for those who want the full functionality of Telegram without unnecessary ads or interface limitations.
+                    The project is open-source, so you can inspect the code on GitHub, build it yourself, or download the ready-made APK from this page.
+                    We constantly update the project and gather your feedback.
+                </p>
+                <p>
+                The website offers a direct download of ChotkoGram, a link to the source code, a Telegram channel, and support contact details.                </p>
+            </div>
+        </section>
+
+        <section class="section-dark" style="justify-content: flex-end; text-align: center;">
+            <div>
+                <p class="big-text">
+                    DOWNLOAD.<br>
+                    <span>NOW.</span>
+                </p>
+                <button type="button" class="cta-btn magnetic" onclick="showDownloadModal()" style="margin-top: 2rem; background: var(--accent); color: #000;">
+                    <span>⎯ SELECT YOUR PILL ⎯</span>
+                </button>
+            </div>
+        </section>
+
+        <footer>
+            <h2><a href="#">CHOTKO<span style="color: var(--accent);">GRAM</span></a></h2>
+            <div style="display: flex; gap: 2rem; margin: 1rem 0; flex-wrap: wrap; justify-content: center;">
+                <a href="https://github.com/chotkof/chotkogram" target="_blank" rel="noopener noreferrer" style="color: inherit;">GITHUB</a>
+                <a href="https://t.me/I_am_Chotko" target="_blank" rel="noopener noreferrer" style="color: inherit;">@I_AM_CHOTKO</a>
+                <a href="https://t.me/Chotko_tg" target="_blank" rel="noopener noreferrer" style="color: inherit;">CHANNEL</a>
+            </div>
+            <p>© 2026 — NO PERMISSION NEEDED. JUST DOWNLOAD.</p>
+        </footer>
+    </main>
+
+    <!-- Brutal Pill Modal -->
+    <div id="download-modal">
+        <div class="modal-content">
+            <div class="modal-close" onclick="closeDownloadModal()">✕</div>
+            <h2 class="modal-title">CHOOSE YOUR REALITY</h2>
+            <p class="modal-subtitle">tap the pill or choose a path below</p>
+            <div class="pills-image-container" id="pillsContainer">
+                <canvas id="pillCanvas" class="pills-canvas" width="600" height="400"></canvas>
+                <div id="redZone" class="pill-zone red-zone" style="display: none;"></div>
+                <div id="blueZone" class="pill-zone blue-zone" style="display: none;"></div>
+                <div id="leftHint" class="hand-hint left-hint" style="display: none;"><span class="hint-text">DIRECT APK</span></div>
+                <div id="rightHint" class="hand-hint right-hint" style="display: none;"><span class="hint-text">TELEGRAM</span></div>
+            </div>
+            <div class="download-options" aria-label="Способы скачивания ChotkoGram">
+                <button type="button" class="download-option red" onclick="downloadRedPill()">
+                    <strong>RED PILL: DIRECT APK</strong>
+                    <span>Скачать chotkogram.apk напрямую с сайта.</span>
+                </button>
+                <button type="button" class="download-option blue" onclick="downloadBluePill()">
+                    <strong>BLUE PILL: TELEGRAM</strong>
+                    <span>Открыть Telegram-канал с релизами и обновлениями.</span>
+                </button>
+            </div>
+            <p id="detection-status" style="color: var(--accent); font-size: 0.75rem; margin: 1rem 0 0;">🎯 CLICK ON THE GLOWING PILLS</p>
+        </div>
+    </div>
+
+    <script>
+        // Конфигурация пилюль
+        const RED_PILL_X = 19;
+        const RED_PILL_Y = 85;
+        const BLUE_PILL_X = 82;
+        const BLUE_PILL_Y = 85;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const canvas = document.getElementById('pillCanvas');
+            const ctx = canvas.getContext('2d');
+            const redZone = document.getElementById('redZone');
+            const blueZone = document.getElementById('blueZone');
+            const leftHint = document.getElementById('leftHint');
+            const rightHint = document.getElementById('rightHint');
+            const statusEl = document.getElementById('detection-status');
+            
+            const img = new Image();
+            img.src = 'pills.png?' + Date.now();
+            
+            img.onload = function() {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                
+                redZone.style.display = 'block';
+                blueZone.style.display = 'block';
+                
+                redZone.style.left = RED_PILL_X + '%';
+                redZone.style.top = RED_PILL_Y + '%';
+                blueZone.style.left = BLUE_PILL_X + '%';
+                blueZone.style.top = BLUE_PILL_Y + '%';
+                
+                // Показываем подсказки только на ПК (ширина > 768px)
+                if (window.innerWidth > 768) {
+                    leftHint.style.display = 'flex';
+                    leftHint.style.left = `calc(${RED_PILL_X}% - 40px)`;
+                    leftHint.style.top = `calc(${RED_PILL_Y}% - 70px)`;
+                    rightHint.style.display = 'flex';
+                    rightHint.style.left = `calc(${BLUE_PILL_X}% - 30px)`;
+                    rightHint.style.top = `calc(${BLUE_PILL_Y}% - 70px)`;
+                }
+                
+                statusEl.innerHTML = '🎯 CLICK ON THE GLOWING PILLS 🎯';
+            };
+            
+            img.onerror = function() {
+                ctx.fillStyle = '#1a1a2a';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#ff4444';
+                ctx.font = '16px monospace';
+                ctx.fillText('❌ pills.png NOT FOUND', canvas.width/2 - 120, canvas.height/2);
+                statusEl.innerHTML = '❌ IMAGE NOT FOUND - add "pills.png"';
+            };
+            
+            redZone.onclick = function(e) {
+                e.stopPropagation();
+                redZone.style.transform = 'translate(-50%, -50%) scale(1.3)';
+                setTimeout(() => redZone.style.transform = 'translate(-50%, -50%) scale(1)', 200);
+                downloadRedPill();
+            };
+            
+            blueZone.onclick = function(e) {
+                e.stopPropagation();
+                blueZone.style.transform = 'translate(-50%, -50%) scale(1.3)';
+                setTimeout(() => blueZone.style.transform = 'translate(-50%, -50%) scale(1)', 200);
+                downloadBluePill();
+            };
+            
+            window.addEventListener('resize', function() {
+                if (window.innerWidth > 768 && img.complete && img.naturalWidth > 0) {
+                    leftHint.style.display = 'flex';
+                    rightHint.style.display = 'flex';
+                    leftHint.style.left = `calc(${RED_PILL_X}% - 40px)`;
+                    leftHint.style.top = `calc(${RED_PILL_Y}% - 70px)`;
+                    rightHint.style.left = `calc(${BLUE_PILL_X}% - 30px)`;
+                    rightHint.style.top = `calc(${BLUE_PILL_Y}% - 70px)`;
+                } else {
+                    leftHint.style.display = 'none';
+                    rightHint.style.display = 'none';
+                }
+            });
+        });
+        
+        function downloadRedPill() {
+            const link = document.createElement('a');
+            link.href = 'https://ts.buzzheavier.com/d/k0dhzysgfpb1?v=ooOuS3qa2igw5-Uui7d7u8y_gkLpiIkKdBMYsEghvAQ3BvGMdT6iPXk61l_haHWXRBuwSUNPME9kbNIQXvkLeEg1o3ysWyYcaM3qiwfncoQ5HfQYfEO7jor5b3SVg1TljAuq2tDZg6E3xUoGSEGW';
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            closeDownloadModal();
+        }
+        
+        function downloadBluePill() {
+            window.open('https://t.me/chotkogram', '_blank');
+            closeDownloadModal();
+        }
+        
+        function closeDownloadModal() {
+            document.getElementById('download-modal').style.display = 'none';
+        }
+        
+        function showDownloadModal() {
+            document.getElementById('download-modal').style.display = 'flex';
+        }
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === "Escape") closeDownloadModal();
+        });
+        
+        document.getElementById('download-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeDownloadModal();
+        });
+    </script>
+
+    <script>
+        // ПК-ЭФФЕКТЫ (запускаются только если НЕ мобильное устройство)
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
+        
+        if (!isMobile) {
+            // --- CHAR SPLIT FOR HERO ---
+            const words = document.querySelectorAll('.hero h1 .word');
+            words.forEach(word => {
+                const text = word.innerText;
+                word.innerHTML = '';
+                text.split('').forEach(char => {
+                    const span = document.createElement('span');
+                    span.classList.add('char');
+                    span.innerText = char;
+                    word.appendChild(span);
+                });
+            });
+
+            // --- MAGNET & CURSOR ---
+            const cursor = document.getElementById('cursor');
+            const magneticElements = document.querySelectorAll('.magnetic');
+            let mouseX = 0, mouseY = 0, cursorX = 0, cursorY = 0;
+
+            window.addEventListener('mousemove', e => {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+            });
+
+            function lerp(start, end, factor) {
+                return start + (end - start) * factor;
+            }
+
+            function animateCursor() {
+                cursorX = lerp(cursorX, mouseX, 0.15);
+                cursorY = lerp(cursorY, mouseY, 0.15);
+                cursor.style.transform = `translate(${cursorX}px, ${cursorY}px) translate(-50%, -50%)`;
+                requestAnimationFrame(animateCursor);
+            }
+            animateCursor();
+
+            magneticElements.forEach(el => {
+                el.addEventListener('mousemove', (e) => {
+                    const rect = el.getBoundingClientRect();
+                    const centerX = rect.left + rect.width / 2;
+                    const centerY = rect.top + rect.height / 2;
+                    const moveX = (e.clientX - centerX) * 0.5;
+                    const moveY = (e.clientY - centerY) * 0.5;
+                    el.style.transform = `translate(${moveX}px, ${moveY}px)`;
+                    cursor.classList.add('magnet');
+                });
+                el.addEventListener('mouseleave', () => {
+                    el.style.transform = 'translate(0, 0)';
+                    cursor.classList.remove('magnet');
+                });
+            });
+
+            // --- SCROLL SKEW EFFECT ---
+            const content = document.getElementById('scroll-content');
+            let lastScrollTop = 0;
+            let skew = 0;
+
+            function scrollLoop() {
+                const scrollTop = window.scrollY;
+                const velocity = scrollTop - lastScrollTop;
+                lastScrollTop = scrollTop;
+                const maxSkew = 5.0;
+                const speed = Math.min(Math.max(velocity * 0.1, -maxSkew), maxSkew);
+                skew = lerp(skew, speed, 0.1);
+                if (Math.abs(skew) > 0.01) {
+                    content.style.transform = `skewY(${skew}deg)`;
+                } else {
+                    content.style.transform = `skewY(0deg)`;
+                }
+                requestAnimationFrame(scrollLoop);
+            }
+            scrollLoop();
+
+            // --- NAVBAR SCROLL EFFECT ---
+            const nav = document.querySelector('.brutal-nav');
+            let isScrolled = false;
+
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 100) {
+                    if (!isScrolled) {
+                        nav.classList.add('scrolled');
+                        isScrolled = true;
+                    }
+                } else {
+                    if (isScrolled) {
+                        nav.classList.remove('scrolled');
+                        isScrolled = false;
+                    }
+                }
+            });
+
+            // --- 3D TILT ON SCROLLED NAV ---
+            document.addEventListener('mousemove', (e) => {
+                if (!isScrolled) return;
+                const cx = window.innerWidth / 2;
+                const cy = 100;
+                const rx = (e.clientY - cy) * 0.02;
+                const ry = (e.clientX - cx) * 0.02;
+                const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
+                nav.style.transform = `translateX(-50%) perspective(1000px) rotateX(${-clamp(rx, -10, 10)}deg) rotateY(${clamp(ry, -10, 10)}deg)`;
+            });
+
+            // --- HACKER TEXT EFFECT ---
+            const alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            document.querySelectorAll('[data-text]').forEach(link => {
+                link.addEventListener('mouseenter', event => {
+                    let iter = 0;
+                    const original = event.target.dataset.text;
+                    clearInterval(event.target.interval);
+                    event.target.interval = setInterval(() => {
+                        event.target.innerText = original.split("")
+                            .map((l, i) => i < iter ? original[i] : alpha[Math.floor(Math.random() * 26)])
+                            .join("");
+                        if (iter >= original.length) clearInterval(event.target.interval);
+                        iter += 1 / 3;
+                    }, 30);
+                });
+                link.addEventListener('mouseleave', e => {
+                    clearInterval(e.target.interval);
+                    e.target.innerText = e.target.dataset.text;
+                });
+            });
+        } else {
+            // Для мобильных: просто скролл без skew, убираем лишние трансформации
+            const nav = document.querySelector('.brutal-nav');
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 80) nav?.classList.add('scrolled');
+                else nav?.classList.remove('scrolled');
+            });
+        }
+    </script>
+</body>
+</html>
